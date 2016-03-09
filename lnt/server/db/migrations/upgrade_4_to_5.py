@@ -20,7 +20,7 @@ def upgrade(engine):
     real_sample_type = session.query(upgrade_0_to_1.SampleType).\
         filter_by(name = "Real").first()
 
-    ts = session.query(upgrade_0_to_1.TestSuite).filter_by(name='nts').first()
+    ts = session.query(upgrade_0_to_1.TestSuite).filter_by(name='memcached').first()
     score = upgrade_0_to_1.SampleField(name="score", type=real_sample_type,
                                        info_key=".score",)
     ts.sample_fields.append(score)

@@ -128,6 +128,66 @@ def initialize_nts_definition(engine, session):
 
     session.add(ts)
 
+def initialize_epengine_definition(engine, session):
+    # Fetch the sample types.
+    real_sample_type = session.query(SampleType).\
+        filter_by(name = "Real").first()
+    status_sample_type = session.query(SampleType).\
+        filter_by(name = "Status").first()
+
+    # Create a test suite compile with "lnt runtest nt".
+    ts = TestSuite(name="ep-engine", db_key_name="EP")
+
+    # Promote the natural information produced by 'runtest nt' to fields.
+    ts.machine_fields.append(MachineField(name="hardware", info_key="hardware"))
+    ts.machine_fields.append(MachineField(name="os", info_key="os"))
+
+    # The only reliable order currently is the "run_order" field. We will want
+    # to revise this over time.
+    ts.order_fields.append(OrderField(name="llvm_project_revision",
+                                      info_key="run_order", ordinal=0))
+
+    # We are only interested in simple runs, so we expect exactly four fields
+    # per test.
+    exec_status = SampleField(name="execution_status", type=status_sample_type,
+                              info_key=".exec.status")
+    exec_time = SampleField(name="execution_time", type=real_sample_type,
+                            info_key=".exec", status_field=exec_status)
+    ts.sample_fields.append(exec_time)
+    ts.sample_fields.append(exec_status)
+
+    session.add(ts)
+
+def initialize_memcached_definition(engine, session):
+    # Fetch the sample types.
+    real_sample_type = session.query(SampleType).\
+        filter_by(name = "Real").first()
+    status_sample_type = session.query(SampleType).\
+        filter_by(name = "Status").first()
+
+    # Create a test suite compile with "lnt runtest nt".
+    ts = TestSuite(name="memcached", db_key_name="Memcached")
+
+    # Promote the natural information produced by 'runtest nt' to fields.
+    ts.machine_fields.append(MachineField(name="hardware", info_key="hardware"))
+    ts.machine_fields.append(MachineField(name="os", info_key="os"))
+
+    # The only reliable order currently is the "run_order" field. We will want
+    # to revise this over time.
+    ts.order_fields.append(OrderField(name="llvm_project_revision",
+                                      info_key="run_order", ordinal=0))
+
+    # We are only interested in simple runs, so we expect exactly four fields
+    # per test.
+    exec_status = SampleField(name="execution_status", type=status_sample_type,
+                              info_key=".exec.status")
+    exec_time = SampleField(name="execution_time", type=real_sample_type,
+                            info_key=".exec", status_field=exec_status)
+    ts.sample_fields.append(exec_time)
+    ts.sample_fields.append(exec_status)
+
+    session.add(ts)
+
 ###
 # Compile Testsuite Definition
 
@@ -312,6 +372,10 @@ def upgrade(engine):
         initialize_nts_definition(engine, session)
     if session.query(TestSuite).filter_by(name="compile").first() is None:
         initialize_compile_definition(engine, session)
+    if session.query(TestSuite).filter_by(name="ep-engine").first() is None:
+        initialize_epengine_definition(engine, session)
+    if session.query(TestSuite).filter_by(name="memcached").first() is None:
+        initialize_memcached_definition(engine, session)
 
     # Commit the results.
     session.commit()
@@ -319,3 +383,5 @@ def upgrade(engine):
     # Materialize the test suite tables.
     initialize_testsuite(engine, session, "nts")
     initialize_testsuite(engine, session, "compile")
+    initialize_testsuite(engine, session, "memcached")
+    initialize_testsuite(engine, session, "ep-engine")

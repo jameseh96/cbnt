@@ -6,9 +6,9 @@ import time
 import xmltodict
 
 
-def convert_xml(project, file_name, run_order):
+def convert_xml(project, run_order, *file_names):
     output = dict()
-    test_dict = xmltodict.parse(open(file_name, 'r').read())
+    test_dict = xmltodict.parse(open(file_names[0], 'r').read())
     machine_dict = {'Info': {},
                     'Name': 'Test Machine'}
     start_time = test_dict['testsuites']['@timestamp'].replace('T', ' ')
@@ -25,23 +25,25 @@ def convert_xml(project, file_name, run_order):
     output['Run'] = run_dict
 
     output['Tests'] = list()
-    if isinstance(test_dict['testsuites']['testsuite']['testcase'], list):
 
-        for test in test_dict['testsuites']['testsuite']['testcase']:
+    for file_name in file_names:
+        test_dict = xmltodict.parse(open(file_name, 'r').read())
+        if isinstance(test_dict['testsuites']['testsuite']['testcase'], list):
+            for test in test_dict['testsuites']['testsuite']['testcase']:
+                full_test_name = '{}.'.format(project) + '/'.join([test['@classname'], test['@name']]) + '.exec'
+                data_list = [str(test['@time'])]
+                test_output = {'Data': data_list,
+                               'Info': {},
+                               'Name': full_test_name}
+                output['Tests'].append(test_output)
+        else:
+            test = test_dict['testsuites']['testsuite']['testcase']
             full_test_name = '{}.'.format(project) + '/'.join([test['@classname'], test['@name']]) + '.exec'
             data_list = [str(test['@time'])]
             test_output = {'Data': data_list,
                            'Info': {},
                            'Name': full_test_name}
             output['Tests'].append(test_output)
-    else:
-        test = test_dict['testsuites']['testsuite']['testcase']
-        full_test_name = '{}.'.format(project) + '/'.join([test['@classname'], test['@name']]) + '.exec'
-        data_list = [str(test['@time'])]
-        test_output = {'Data': data_list,
-                       'Info': {},
-                       'Name': full_test_name}
-        output['Tests'].append(test_output)
 
     print json.dumps(output)
 

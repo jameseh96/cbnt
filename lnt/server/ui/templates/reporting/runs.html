@@ -6,17 +6,20 @@
 #}
 {%
   macro add_report_changes_detail_for_field_and_bucket(
-    field, show_perf, run_url, field_index, field_display_name, bucket_name, bucket, test_names,
-    metric_name, metric_field_suffix, secondary_field_suffix, secondary_info, styles
+    compare_to, field, show_perf, run_url, field_index, field_display_name, bucket_name, bucket, test_names,
+    metric_name, metric_field_suffix, secondary_field_suffix, secondary_info, styles, classes
   )
 %}
 
 {% if bucket and bucket_name != 'Unchanged Tests' %}
    <p>
-     <table style="{{ styles['table'] }}">
+     <table style="{{ styles['table'] }}" class="{{ classes['table'] }}">
+       <thead>
        <tr>
          <th style="{{ styles['th'] }}; width:500px">{{ bucket_name }} - {{ field_display_name }}</th>
        {% if not show_perf %}
+         </tr>
+         </thead>
          <tbody class="searchable">
          {% for name in test_names %}
            <tr><td class="benchmark-name" style="{{ styles['td'] }}">
@@ -33,12 +36,19 @@
          <th style="{{ styles['th'] }}">&sigma; {{ secondary_field_suffix }}</th>
          {% endif %}
          </tr>
+         </thead>
          <tbody class="searchable">
          
          {% for name, cr, test_id in bucket %}
          <tr>
            <td class="benchmark-name" style="{{ styles['td'] }}">
              <a href="{{ run_url }}/graph?{{ [('test.%d' % test_id, field_index)] | urlencode }}">{{ name }}</a>
+             {% if compare_to %}
+             {% set compare_to_id = compare_to.id %}
+             {% else %}
+             {% set compare_to_id = None %}
+             {% endif %}
+             {{ utils.render_profile_link(cr.cur_profile, cr.prev_profile, run.id, compare_to_id, test_id) }}
            </td>
            {{ cr.pct_delta|aspctcell(style=styles['td'],reverse=cr.bigger_is_better)|safe }}
            <td style="{{ styles['td'] }}">{{ "%.4f" | format(cr.previous) }}</td>
@@ -70,26 +80,35 @@
 </h1>
 
 <p>
-<table style="{{ styles['table'] }}">
+<table style="{{ styles['table'] }}" class="{{ classes['table'] }}">
   <thead>
     <tr>
       <th style="{{ styles['th'] }}">Run</th>
       <th style="{{ styles['th'] }}">Order</th>
       <th style="{{ styles['th'] }}">Start Time</th>
       <th style="{{ styles['th'] }}">Duration</th>
+      {%- set show_producers = (run and run.parameters.producer) or(compare_to and compare_to.parameters.producer) or (baseline and baseline.parameters.producer) %}
+      {% if show_producers %}
+        <th style="{{ styles['th'] }}">Produced by</th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
   {% for title, r in (('Current', run), ('Previous', compare_to), ('Baseline', baseline)) %}
     {% if r %}
-    <tr>
+    <tr id="run-table-{{ title }}">
       <td style="{{ styles['td'] }}"><a href="{{ ts_url }}/{{ r.id }}">{{ title }}</a></td>
       <td style="{{ styles['td'] }}"><a href="{{ ts_url }}/order/{{ r.order.id }}">{{ r.order.llvm_project_revision }}</a></td>
       <td style="{{ styles['td'] }}"><span class="utctime">{{ r.start_time.isoformat() }}</span></td>
       <td style="{{ styles['td'] }}">{{ r.end_time - r.start_time }}</td>
+      {% if show_producers %}
+        <td style="{{ styles['td'] }}">{{ r.parameters.producer|producerAsHTML }}</td>
+      {% endif %}
     </tr>
     {% else %}
-      <tr><td style="{{ styles['td'] }}" colspan=4>No {{ title }} Run</td></tr>
+    <tr id="run-table-{{ title }}">
+      <td style="{{ styles['td'] }}" colspan="5">No {{ title }} Run</td>
+    </tr>
     {% endif %}
   {% endfor %}
  </tbody>
@@ -108,7 +127,7 @@
 
 <hr>
 <h3>Tests Summary</h3>
-<table style="{{ styles['table'] }}">
+<table style="{{ styles['table'] }}" class="{{ classes['table'] }}">
   <thead>
     <tr>
       <th style="{{ styles['th'] }}">Status Group</th>
@@ -149,9 +168,9 @@
   {% set field_display_name = {"compile_time":"Compile Time",
                                "execution_time":"Execution Time"}.get(field.name, field.name) %}
   {{
-    add_report_changes_detail_for_field_and_bucket(field, show_perf, run_url, field_index, field_display_name,
+    add_report_changes_detail_for_field_and_bucket(compare_to, field, show_perf, run_url, field_index, field_display_name,
                                                    bucket_name, sorted_bucket, test_names,
-                                                   'Previous', '', ' (B)', run_to_baseline_info, styles)
+                                                   'Previous', '', ' (B)', run_to_baseline_info, styles, classes)
   }}
 {% endfor %}
 <p>
@@ -162,9 +181,9 @@
   {% set field_display_name = {"compile_time":"Compile Time",
                                "execution_time":"Execution Time"}.get(field.name, field.name) %}
   {{
-    add_report_changes_detail_for_field_and_bucket(field, show_perf, run_url, field_index, field_display_name,
+    add_report_changes_detail_for_field_and_bucket(baseline, field, show_perf, run_url, field_index, field_display_name,
                                                    bucket_name, sorted_bucket, test_names,
-                                                   'Baseline', '(B)', '', run_to_run_info, styles)
+                                                   'Baseline', '(B)', '', run_to_run_info, styles, classes)
   }}
 {% endfor %}
 {% endif %}

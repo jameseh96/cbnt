@@ -1,12 +1,24 @@
-import subprocess, tempfile, json, os, shlex, platform, pipes
+import subprocess
+import tempfile
+import json
+import os
+import shlex
+import platform
+import pipes
+import sys
+import shutil
+import glob
+import re
+import multiprocessing
 
 from optparse import OptionParser, OptionGroup
 
 import lnt.testing
+import lnt.testing.profile
 import lnt.testing.util.compilers
 from lnt.testing.util.misc import timestamp
-from lnt.testing.util.commands import note, warning, fatal
-from lnt.testing.util.commands import capture, mkdir_p, which
+from lnt.testing.util.commands import note, fatal, warning
+from lnt.testing.util.commands import mkdir_p, which
 from lnt.testing.util.commands import resolve_command_path, isexecfile
 
 from lnt.tests.builtintest import BuiltinTest
@@ -17,6 +29,26 @@ from lnt.tests.builtintest import BuiltinTest
 TEST_SUITE_KNOWN_ARCHITECTURES = ['ARM', 'AArch64', 'Mips', 'X86']
 KNOWN_SAMPLE_KEYS = ['compile', 'exec', 'hash', 'score']
 
+
+# _importProfile imports a single profile. It must be at the top level (and
+# not within TestSuiteTest) so that multiprocessing can import it correctly.
+def _importProfile(name_filename):
+    name, filename = name_filename
+
+    if not os.path.exists(filename):
+        warning('Profile %s does not exist' % filename)
+        return None
+    
+    pf = lnt.testing.profile.profile.Profile.fromFile(filename)
+    if not pf:
+        return None
+
+    pf.upgrade()
+    profilefile = pf.render()
+    return lnt.testing.TestSamples(name + '.profile',
+                                   [profilefile],
+                                   {},
+                                   str)
 
 class TestSuiteTest(BuiltinTest):
     def __init__(self):
@@ -55,8 +87,11 @@ class TestSuiteTest(BuiltinTest):
                          help=("Defines to pass to cmake. These do not require the "
                                "-D prefix and can be given multiple times. e.g.: "
                                "--cmake-define A=B => -DA=B"))
+        group.add_option("-C", "--cmake-cache", dest="cmake_cache",
+                         help=("Use one of the test-suite's cmake configurations."
+                               " Ex: Release, Debug"))
         parser.add_option_group(group)
-                         
+
         group = OptionGroup(parser, "Test compiler")
         group.add_option("", "--cc", dest="cc", metavar="CC",
                          type=str, default=None,
@@ -115,9 +150,11 @@ class TestSuiteTest(BuiltinTest):
                          help="Number of compilation threads, defaults to "
                          "--threads", type=int, default=0, metavar="N")
         group.add_option("", "--use-perf", dest="use_perf",
-                         help=("Use perf to obtain high accuracy timing"
-                               "[%default]"),
-                         action='store_true', default=False)
+                         help=("Use Linux perf for high accuracy timing, profile "
+                               "information or both"),
+                         type='choice',
+                         choices=['none', 'time', 'profile', 'all'],
+                         default='none')
         group.add_option("", "--run-under", dest="run_under",
                          help="Wrapper to run tests under ['%default']",
                          type=str, default="")
@@ -127,6 +164,11 @@ class TestSuiteTest(BuiltinTest):
         group.add_option("", "--compile-multisample", dest="compile_multisample",
                          help="Accumulate compile test data from multiple runs",
                          type=int, default=1, metavar="N")
+        group.add_option("-d", "--diagnose", dest="diagnose",
+                         help="Produce a diagnostic report for a particular "
+                              "test, this will not run all the tests.  Must be"
+                              " used in conjunction with --only-test.",
+                         action="store_true", default=False,)
 
         parser.add_option_group(group)
 
@@ -148,11 +190,23 @@ class TestSuiteTest(BuiltinTest):
         group.add_option("-v", "--verbose", dest="verbose",
                          help="show verbose test results",
                          action="store_true", default=False)
+        group.add_option("", "--succinct-compile-output",
+                         help="run Make without VERBOSE=1",
+                         action="store_true", dest="succinct")
         group.add_option("", "--exclude-stat-from-submission",
                          dest="exclude_stat_from_submission",
                          help="Do not submit the stat of this type [%default]",
                          action='append', choices=KNOWN_SAMPLE_KEYS,
                          type='choice', default=[])
+        group.add_option("", "--single-result", dest="single_result",
+                         help=("only execute this single test and apply "
+                               "--single-result-predicate to calculate the "
+                               "exit status"))
+        group.add_option("", "--single-result-predicate",
+                         dest="single_result_predicate",
+                         help=("the predicate to apply to calculate the exit "
+                               "status (with --single-result)"),
+                         default="status")
         parser.add_option_group(group)
 
         group = OptionGroup(parser, "Test tools")
@@ -214,7 +268,7 @@ class TestSuiteTest(BuiltinTest):
                 parser.error(
                     "invalid --test-externals argument, does not exist: %r" % (
                         opts.test_suite_externals,))
-
+                
         opts.cmake = resolve_command_path(opts.cmake)
         if not isexecfile(opts.cmake):
             parser.error("CMake tool not found (looked for %s)" % opts.cmake)
@@ -230,10 +284,38 @@ class TestSuiteTest(BuiltinTest):
             if not isexecfile(split[0]):
                 parser.error("Run under wrapper not found (looked for %s)" %
                              opts.run_under)
+
+        if opts.single_result:
+            # --single-result implies --only-test
+            opts.only_test = opts.single_result
+                
+        if opts.only_test:
+            # --only-test can either point to a particular test or a directory.
+            # Therefore, test_suite_root + opts.only_test or
+            # test_suite_root + dirname(opts.only_test) must be a directory.
+            path = os.path.join(self.opts.test_suite_root, opts.only_test)
+            parent_path = os.path.dirname(path)
+            
+            if os.path.isdir(path):
+                opts.only_test = (opts.only_test, None)
+            elif os.path.isdir(parent_path):
+                opts.only_test = (os.path.dirname(opts.only_test),
+                                  os.path.basename(opts.only_test))
+            else:
+                parser.error("--only-test argument not understood (must be a " +
+                             " test or directory name)")
+
+        if opts.single_result and not opts.only_test[1]:
+            parser.error("--single-result must be given a single test name, not a " +
+                         "directory name")
                 
         opts.cppflags = ' '.join(opts.cppflags)
         opts.cflags = ' '.join(opts.cflags)
         opts.cxxflags = ' '.join(opts.cxxflags)
+        
+        if opts.diagnose:
+            if not opts.only_test:
+                parser.error("--diagnose requires --only-test")
         
         self.start_time = timestamp()
 
@@ -260,7 +342,10 @@ class TestSuiteTest(BuiltinTest):
             self.nick += "__%s__%s" % (cc_nick,
                                        cc_info['cc_target'].split('-')[0])
         note('Using nickname: %r' % self.nick)
-            
+
+        #  If we are doing diagnostics, skip the usual run and do them now.
+        if opts.diagnose:
+            return self.diagnose()
         # Now do the actual run.
         reports = []
         for i in range(max(opts.exec_multisample, opts.compile_multisample)):
@@ -332,29 +417,33 @@ class TestSuiteTest(BuiltinTest):
 
         subdir = path
         if self.opts.only_test:
-            components = [path] + self.opts.only_test.split('/')
+            components = [path] + [self.opts.only_test[0]]
             subdir = os.path.join(*components)
 
         self._check_call([make_cmd, 'clean'],
                          cwd=subdir)
         
-    def _configure(self, path):
+    def _configure(self, path, execute=True):
         cmake_cmd = self.opts.cmake
 
         defs = {
             # FIXME: Support ARCH, SMALL/LARGE etc
             'CMAKE_C_COMPILER': self.opts.cc,
             'CMAKE_CXX_COMPILER': self.opts.cxx,
-            'CMAKE_C_FLAGS': self._unix_quote_args(' '.join([self.opts.cppflags,
-                                                             self.opts.cflags])),
-            'CMAKE_CXX_FLAGS': self._unix_quote_args(' '.join([self.opts.cppflags,
-                                                               self.opts.cxxflags]))
         }
+        if self.opts.cppflags or self.opts.cflags:
+            all_cflags = ' '.join([self.opts.cppflags, self.opts.cflags])
+            defs['CMAKE_C_FLAGS'] = self._unix_quote_args(all_cflags)
+        
+        if self.opts.cppflags or self.opts.cxxflags:
+            all_cxx_flags = ' '.join([self.opts.cppflags, self.opts.cxxflags])
+            defs['CMAKE_CXX_FLAGS'] = self._unix_quote_args(all_cxx_flags)
+        
         if self.opts.run_under:
             defs['TEST_SUITE_RUN_UNDER'] = self._unix_quote_args(self.opts.run_under)
         if self.opts.benchmarking_only:
             defs['TEST_SUITE_BENCHMARKING_ONLY'] = 'ON'
-        if self.opts.use_perf:
+        if self.opts.use_perf in ('time', 'all'):
             defs['TEST_SUITE_USE_PERF'] = 'ON'
         if self.opts.cmake_defines:
             for item in self.opts.cmake_defines:
@@ -365,25 +454,46 @@ class TestSuiteTest(BuiltinTest):
         for k,v in sorted(defs.items()):
             lines.append("  %s: '%s'" % (k,v))
         lines.append('}')
+        
+        # Prepare cmake cache if requested:
+        cache = []
+        if self.opts.cmake_cache:
+            cache_path = os.path.join(self._test_suite_dir(), 
+                                      "cmake/caches/", self.opts.cmake_cache + ".cmake")
+            if os.path.exists(cache_path):
+                cache = ['-C', cache_path]
+            else:
+                fatal("Could not find CMake cache file: " + 
+                      self.opts.cmake_cache + " in " + cache_path)
 
         for l in lines:
             note(l)
-        self._check_call([cmake_cmd, self._test_suite_dir()] +
-                         ['-D%s=%s' % (k,v) for k,v in defs.items()],
-                         cwd=path)
+        
+        cmake_cmd = [cmake_cmd] + cache + [self._test_suite_dir()] + \
+                         ['-D%s=%s' % (k,v) for k,v in defs.items()]
+        if execute:
+            self._check_call(cmake_cmd, cwd=path)
+        
+        return cmake_cmd
 
     def _make(self, path):
         make_cmd = self.opts.make
         
         subdir = path
+        target = 'all'
         if self.opts.only_test:
-            components = [path] + self.opts.only_test.split('/')
+            components = [path] + [self.opts.only_test[0]]
+            if self.opts.only_test[1]:
+                target = self.opts.only_test[1]
             subdir = os.path.join(*components)
 
         note('Building...')
+        if not self.opts.succinct:
+            args = ["VERBOSE=1", target]
+        else:
+            args = [target]
         self._check_call([make_cmd,
-                          '-j', str(self._build_threads()),
-                          "VERBOSE=1"],
+                          '-j', str(self._build_threads())] + args,
                          cwd=subdir)
 
     def _lit(self, path, test):
@@ -397,13 +507,15 @@ class TestSuiteTest(BuiltinTest):
         
         subdir = path
         if self.opts.only_test:
-            components = [path] + self.opts.only_test.split('/')
+            components = [path] + [self.opts.only_test[0]]
             subdir = os.path.join(*components)
 
         extra_args = []
         if not test:
             extra_args = ['--no-execute']
-
+        if self.opts.use_perf in ('profile', 'all'):
+            extra_args += ['--param', 'profile=perf']
+            
         note('Testing...')
         try:
             self._check_call([lit_cmd,
@@ -465,12 +577,31 @@ class TestSuiteTest(BuiltinTest):
         if only_test:
             ignore.append('compile')
 
+        profiles_to_import = []
+            
         for test_data in data['tests']:
             raw_name = test_data['name'].split(' :: ', 1)[1]
             name = 'nts.' + raw_name.rsplit('.test', 1)[0]
             is_pass = self._is_pass_code(test_data['code'])
+
+            # If --single-result is given, exit based on --single-result-predicate
+            if self.opts.single_result and \
+               raw_name == self.opts.single_result+'.test':
+                env = {'status': is_pass}
+                if 'metrics' in test_data:
+                    for k,v in test_data['metrics'].items():
+                        env[k] = v
+                        if k in LIT_METRIC_TO_LNT:
+                            env[LIT_METRIC_TO_LNT[k]] = v
+                status = eval(self.opts.single_result_predicate, {}, env)
+                sys.exit(0 if status else 1)
+
             if 'metrics' in test_data:
                 for k,v in test_data['metrics'].items():
+                    if k == 'profile':
+                        profiles_to_import.append( (name, v) )
+                        continue
+                    
                     if k not in LIT_METRIC_TO_LNT or LIT_METRIC_TO_LNT[k] in ignore:
                         continue
                     test_samples.append(
@@ -491,6 +622,27 @@ class TestSuiteTest(BuiltinTest):
                                             [self._get_lnt_code(test_data['code'])],
                                             test_info))
 
+        # Now import the profiles in parallel.
+        if profiles_to_import:
+            note('Importing %d profiles with %d threads...' %
+                 (len(profiles_to_import), multiprocessing.cpu_count()))
+            TIMEOUT = 800
+            try:
+                pool = multiprocessing.Pool()
+                waiter = pool.map_async(_importProfile, profiles_to_import)
+                samples = waiter.get(TIMEOUT)
+                test_samples.extend([sample
+                                     for sample in samples
+                                     if sample is not None])
+            except multiprocessing.TimeoutError:
+                warning('Profiles had not completed importing after %s seconds.'
+                        % TIMEOUT)
+                note('Aborting profile import and continuing')
+
+        if self.opts.single_result:
+            # If we got this far, the result we were looking for didn't exist.
+            raise RuntimeError("Result %s did not exist!" %
+                               self.opts.single_result)
 
         # FIXME: Add more machine info!
         run_info = {
@@ -512,7 +664,88 @@ class TestSuiteTest(BuiltinTest):
     def _unix_quote_args(self, s):
         return ' '.join(map(pipes.quote, shlex.split(s)))
 
-    
+    def _cp_artifacts(self, src, dest, patts):
+        """Copy artifacts out of the build """
+        for patt in patts:
+            for file in glob.glob(src + patt):
+                shutil.copy(file, dest)
+                note(file + " --> " + dest)
+
+    def diagnose(self):
+        """Build a triage report that contains information about a test.
+
+        This is an alternate top level target for running the test-suite.  It
+        will produce a triage report for a benchmark instead of running the
+        test-suite normally. The report has stuff in it that will be useful
+        for reproducing and diagnosing a performance change.
+        """
+        assert self.opts.only_test, "We don't have a benchmark to diagenose."
+        bm_path, short_name = self.opts.only_test
+        assert bm_path, "The benchmark path is empty?"
+
+        report_name = "{}.report".format(short_name)
+        # Make a place for the report.
+        report_path = os.path.abspath(report_name)
+
+        # Overwrite the report.
+        if os.path.exists(report_path):
+            shutil.rmtree(report_path)
+        os.mkdir(report_path)
+
+        path = self._base_path
+        if not os.path.exists(path):
+            mkdir_p(path)
+        os.chdir(path)
+
+        # Run with -save-temps
+        cmd = self._configure(path, execute=False)
+        cmd_temps = cmd + ['-DTEST_SUITE_DIAGNOSE=On',
+                           '-DTEST_SUITE_DIAGNOSE_FLAGS=-save-temps']
+
+        note(' '.join(cmd_temps))
+
+        out = subprocess.check_output(cmd_temps)
+        note(out)
+
+        # Figure out our test's target.
+        make_cmd = [self.opts.make, "VERBOSE=1", 'help']
+
+        make_targets = subprocess.check_output(make_cmd)
+        matcher = re.compile(r"^\.\.\.\s{}$".format(short_name),
+                             re.MULTILINE | re.IGNORECASE)
+        if not matcher.search(make_targets):
+            assert False, "did not find benchmark, must be nestsed? Unimplemented."
+
+        local_path = os.path.join(path, bm_path)
+
+        make_save_temps = [self.opts.make, "VERBOSE=1", short_name]
+        note(" ".join(make_save_temps))
+        out = subprocess.check_output(make_save_temps)
+        note(out)
+        # Executable(s) and test file:
+        shutil.copy(os.path.join(local_path, short_name), report_path)
+        shutil.copy(os.path.join(local_path, short_name + ".test"), report_path)
+        # Temp files are in:
+        temp_files = os.path.join(local_path, "CMakeFiles",
+                                  short_name + ".dir")
+
+        save_temps_file = ["/*.s", "/*.ii", "/*.i", "/*.bc"]
+        build_files = ["/*.o", "/*.time", "/*.cmake", "/*.make",
+                       "/*.includecache", "/*.txt"]
+        self._cp_artifacts(local_path, report_path, save_temps_file)
+        self._cp_artifacts(temp_files, report_path, build_files)
+
+        note("Report produced in: " + report_path)
+
+        # Run through the rest of LNT, but don't allow this to be submitted
+        # because there is no data.
+        class DontSubmitResults(object):
+            def get(self, url):
+                return None
+
+        return DontSubmitResults()
+
+
 def create_instance():
     return TestSuiteTest()
 

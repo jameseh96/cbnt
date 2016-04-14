@@ -4,6 +4,7 @@ import re
 import tempfile
 import time
 import copy
+import json
 
 import flask
 from flask import abort
@@ -30,6 +31,7 @@ import lnt.server.ui.util
 import lnt.server.reporting.dailyreport
 import lnt.server.reporting.summaryreport
 import lnt.server.db.rules_manager
+import lnt.server.db.search
 from collections import namedtuple
 from lnt.util import async_ops
 
@@ -282,12 +284,26 @@ class V4RequestInfo(object):
         # Gather the runs to use for statistical data.
         comparison_start_run = self.compare_to or self.run
 
+        # We're going to render this on a real webpage with CSS support, so
+        # override the default styles and provide bootstrap class names for
+        # the tables.
+        styles = {
+            'body': '', 'td': '',
+            'h1': 'font-size: 14pt',
+            'table': 'width: initial; font-size: 9pt;',
+            'th': 'text-align: center;'
+        }
+        classes = {
+            'table': 'table table-striped table-condensed table-hover'
+        }
+        
         reports = lnt.server.reporting.runs.generate_run_report(
             self.run, baseurl=db_url_for('index', _external=True),
             only_html_body=only_html_body, result=None,
             compare_to=self.compare_to, baseline=self.baseline,
             num_comparison_runs=self.num_comparison_runs,
-            aggregation_fn=self.aggregation_fn, confidence_lv=confidence_lv)
+            aggregation_fn=self.aggregation_fn, confidence_lv=confidence_lv,
+            styles=styles, classes=classes)
         _, self.text_report, self.html_report, self.sri = reports
 
 @v4_route("/<int:id>/report")
@@ -403,12 +419,16 @@ def v4_run(id):
 
         return flask.jsonify(**json_obj)
 
+    urls = {
+        'search': v4_url_for('v4_search')
+    }
     return render_template(
         "v4_run.html", ts=ts, options=options,
         metric_fields=list(ts.Sample.get_metric_fields()),
         test_info=test_info, analysis=lnt.server.reporting.analysis,
         test_min_value_filter=test_min_value_filter,
-        request_info=info)
+        request_info=info, urls=urls
+)
 
 @v4_route("/order/<int:id>")
 def v4_order(id):
@@ -469,6 +489,7 @@ def v4_run_graph(id):
     return redirect(v4_url_for("v4_graph", **args))
 
 BaselineLegendItem = namedtuple('BaselineLegendItem', 'name id')
+LegendItem = namedtuple('LegendItem', 'machine test_name field_name color url')
 
 @v4_route("/graph")
 def v4_graph():
@@ -632,7 +653,7 @@ def v4_graph():
         # Determine the base plot color.
         col = list(util.makeDarkColor(float(i) / num_plots))
         url = "/".join([str(machine.id), str(test.id), str(field_index)])
-        legend.append((machine, test.name, field.name, tuple(col), url))
+        legend.append(LegendItem(machine, test.name, field.name, tuple(col), url))
 
         # Load all the field values for this test on the same machine.
         #
@@ -685,7 +706,7 @@ def v4_graph():
                                    'yaxis': {'from': mean, 'to': mean},
                                    'name': q_baseline[0].llvm_project_revision})
             baseline_name = "Baseline {} on {}".format(baseline_title,  q_baseline[0].name)
-            legend.append((BaselineLegendItem(baseline_name, baseline.id), test.name, field.name, dark_col))
+            legend.append(LegendItem(BaselineLegendItem(baseline_name, baseline.id), test.name, field.name, dark_col, None))
 
     # Draw mean trend if requested.
     if mean_parameter:
@@ -693,7 +714,7 @@ def v4_graph():
         test_name = 'Geometric Mean'
 
         col = (0,0,0)
-        legend.append((machine, test_name, field.name, col, None))
+        legend.append(LegendItem(machine, test_name, field.name, col, None))
 
         q = ts.query(sqlalchemy.sql.func.min(field.column),
                 ts.Order.llvm_project_revision,
@@ -904,13 +925,13 @@ def v4_graph():
         json_obj['data'] = graph_plots
         # Flatten ORM machine objects to their string names.
         simple_type_legend = []
-        for machine, test, unit, color, url in legend:
+        for li in legend:
             # Flatten name, make color a dict.
-            new_entry = {'name': machine.name,
-                         'test': test,
-                         'unit': unit,
-                         'color': util.toColorString(color),
-                         'url': url}
+            new_entry = {'name': li.machine.name,
+                         'test': li.test_name,
+                         'unit': li.field_name,
+                         'color': util.toColorString(li.color),
+                         'url': li.url}
             simple_type_legend.append(new_entry)
         json_obj['legend'] = simple_type_legend
         json_obj['revision_range'] = revision_range
@@ -1218,3 +1239,26 @@ def health():
     if explode:
         return msg, 500
     return msg, 200
+
+@v4_route("/search")
+def v4_search():
+    def _isint(i):
+        try:
+            int(i)
+            return True
+        except:
+            return False
+
+    ts = request.get_testsuite()
+    query = request.args.get('q')
+    l = request.args.get('l', 8)
+    default_machine = request.args.get('m', None)
+
+    assert query
+    results = lnt.server.db.search.search(ts, query, num_results=l,
+                                          default_machine=default_machine)
+
+    return json.dumps(
+        [('%s #%s' % (r.machine.name, r.order.llvm_project_revision),
+          r.id)
+         for r in results])

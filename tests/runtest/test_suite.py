@@ -231,8 +231,7 @@
 # CHECK-ONLYTEST: Configuring with {
 # CHECK-ONLYTEST:   one: 'two'
 # CHECK-ONLYTEST:   three: 'four'
-# CHECK-ONLYTEST: Execute: {{.*}}/fake-make -j 1
-# CHECK-ONLYTEST:            (In {{.*}}/subtest)
+# CHECK-ONLYTEST: Execute: {{.*}}/fake-make -j 1 VERBOSE=1 subtest
 
 # Check --benchmarking-only
 # RUN: lnt runtest test-suite \
@@ -244,11 +243,13 @@
 # RUN:     --use-make %S/Inputs/test-suite-cmake/fake-make \
 # RUN:     --use-lit %S/Inputs/test-suite-cmake/fake-lit \
 # RUN:     --benchmarking-only \
+# RUN:     --succinct-compile-output \
 # RUN:     --verbose \
 # RUN:     > %t.log 2> %t.err
 # RUN: FileCheck --check-prefix CHECK-BENCHONLY < %t.err %s
 # CHECK-BENCHONLY: Configuring with {
 # CHECK-BENCHONLY:   TEST_SUITE_BENCHMARKING_ONLY: 'ON'
+# CHECK-BENCHONLY-NOT: VERBOSE=1
 
 # Check --use-perf
 # RUN: lnt runtest test-suite \
@@ -259,7 +260,7 @@
 # RUN:     --use-cmake %S/Inputs/test-suite-cmake/fake-cmake \
 # RUN:     --use-make %S/Inputs/test-suite-cmake/fake-make \
 # RUN:     --use-lit %S/Inputs/test-suite-cmake/fake-lit \
-# RUN:     --use-perf \
+# RUN:     --use-perf=time \
 # RUN:     --verbose \
 # RUN:     > %t.log 2> %t.err
 # RUN: FileCheck --check-prefix CHECK-USE-PERF < %t.err %s
@@ -300,3 +301,52 @@
 # RUN:     --run-order=123 > %t.log 2> %t.err
 # RUN: FileCheck --check-prefix CHECK-RESULTS-FAIL < %t.SANDBOX/build/report.json %s
 # CHECK-RESULTS-FAIL: "run_order": "123"
+
+# Check a run of test-suite using a cmake cache
+# RUN: lnt runtest test-suite \
+# RUN:     --sandbox %t.SANDBOX \
+# RUN:     --no-timestamp \
+# RUN:     --test-suite %S/Inputs/test-suite-cmake \
+# RUN:     --cc %{shared_inputs}/FakeCompilers/clang-r154331 \
+# RUN:     --use-cmake %S/Inputs/test-suite-cmake/fake-cmake \
+# RUN:     --use-make %S/Inputs/test-suite-cmake/fake-make \
+# RUN:     --use-lit %S/Inputs/test-suite-cmake/fake-lit \
+# RUN:     --cmake-cache Release \
+# RUN:     &> %t.cmake-cache.log
+# RUN: FileCheck  --check-prefix CHECK-CACHE < %t.cmake-cache.log %s
+# CHECK-CACHE: Cmake Cache
+# CHECK-CACHE: Release
+
+
+# Check a run of test-suite using a invalid cmake cache
+# RUN: lnt runtest test-suite \
+# RUN:     --sandbox %t.SANDBOX \
+# RUN:     --no-timestamp \
+# RUN:     --test-suite %S/Inputs/test-suite-cmake \
+# RUN:     --cc %{shared_inputs}/FakeCompilers/clang-r154331 \
+# RUN:     --use-cmake %S/Inputs/test-suite-cmake/fake-cmake \
+# RUN:     --use-make %S/Inputs/test-suite-cmake/fake-make \
+# RUN:     --use-lit %S/Inputs/test-suite-cmake/fake-lit \
+# RUN:     --cmake-cache Debug \
+# RUN:     &> %t.cmake-cache2.err || true
+# RUN: FileCheck  --check-prefix CHECK-CACHE2 < %t.cmake-cache2.err %s
+# CHECK-CACHE2: Could not find CMake cache file
+
+# Check importing profiles
+# RUN: lnt runtest test-suite \
+# RUN:     --sandbox %t.SANDBOX \
+# RUN:     --no-timestamp \
+# RUN:     --test-suite %S/Inputs/test-suite-cmake \
+# RUN:     --cc %{shared_inputs}/FakeCompilers/clang-r154331 \
+# RUN:     --use-cmake %S/Inputs/test-suite-cmake/fake-cmake \
+# RUN:     --use-make %S/Inputs/test-suite-cmake/fake-make \
+# RUN:     --use-lit %S/Inputs/test-suite-cmake/fake-lit-profile \
+# RUN:     --use-perf=all \
+# RUN:     --verbose \
+# RUN:     > %t.log 2> %t.err
+# RUN: FileCheck --check-prefix CHECK-USE-PERF-ALL < %t.err %s
+# CHECK-USE-PERF-ALL: Configuring with {
+# CHECK-USE-PERF-ALL:   TEST_SUITE_USE_PERF: 'ON'
+# CHECK-USE-PERF-ALL: --param profile=perf
+# CHECK-USE-PERF-ALL: Importing 1 profiles with
+# CHECK-USE-PERF-ALL: Profile /tmp/I/Do/Not/Exist.perf_data does not exist

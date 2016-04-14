@@ -29,33 +29,37 @@ WORKERS = None  # The worker pool.
 JOBS = []
 
 
-
 def launch_workers():
     """Make sure we have a worker pool ready to queue."""
     global WORKERS
     if not WORKERS:
         note("Starting workers")
-        manager = Manager()         
+        manager = Manager()
         try:
-            current_app.config['mem_logger'].buffer = manager.list(current_app.config['mem_logger'].buffer)
+            current_app.config['mem_logger'].buffer = \
+                manager.list(current_app.config['mem_logger'].buffer)
         except RuntimeError:
             #  It might be the case that we are not running in the app.
             #  In this case, don't bother memory logging, stdout should
             #  sufficent for console mode.
             pass
-        atexit.register(cleanup)
-        signal.signal(signal.SIGTERM, sigHandler)
+
 
 def sigHandler(signo, frame):
     sys.exit(0)
 
 
 def cleanup():
-    print "Running process cleanup."
+    note("Running process cleanup.")
     for p in JOBS:
-        print "Waiting for", p.name, p.pid
+        note("Waiting for %s %s" % (p.name, p.pid))
         if p.is_alive:
             p.join()
+
+
+atexit.register(cleanup)
+signal.signal(signal.SIGTERM, sigHandler)
+
 
 def async_fieldchange_calc(db_name, ts, run):
     """Run regenerate field changes in the background."""

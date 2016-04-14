@@ -15,8 +15,14 @@ Contents
    tests
 
    changes
-   
+
    concepts
+
+   importing_data
+
+   developer_guide
+
+   todo
 
 Indices and tables
 ==================

@@ -71,3 +71,5 @@ def upgrade(engine):
     # Create our FieldChangeField table and commit.
     upgrade_testsuite(engine, session, 'nts')
     upgrade_testsuite(engine, session, 'compile')
+    upgrade_testsuite(engine, session, 'ep-engine')
+    upgrade_testsuite(engine, session, 'memcached')

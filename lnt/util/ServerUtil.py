@@ -20,8 +20,7 @@ from lnt.util import ImportData
 def submitFileToServer(url, file, commit):
     with open(file, 'rb') as f:
         values = { 'input_data' : f.read(),
-                   'commit' : ("0","1")[not not commit] }
-
+                   'commit' : ('0', '1')[not not commit] }
     data = urllib.urlencode(values)
     response = urllib2.urlopen(urllib2.Request(url, data))
     result_data = response.read()
@@ -54,6 +53,7 @@ def submitFileToInstance(path, file, commit):
 
 
 def submitFile(url, file, commit, verbose):
+    print commit
     # If this is a real url, submit it using urllib.
     if '://' in url:
         result = submitFileToServer(url, file, commit)

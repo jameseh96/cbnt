@@ -8,3 +8,4 @@ lnt.log
 lnt/.idea/
 venv/
 lnt/testing/profile/cPerf.so
+/LNT.egg-info

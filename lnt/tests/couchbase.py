@@ -35,25 +35,25 @@ class CouchbaseTestResult(object):
     def generate_report(self, tag):
         test_results = []
         for output in self.output:
-            if isinstance(output['testsuites']['testsuite']['testcase'],
-                          list):
-                for test in output['testsuites']['testsuite']['testcase']:
+            self._normalise_xml(output)
+            for test_suite in output['testsuites']['testsuite']:
+                for test in test_suite['testcase']:
                     full_test_name = '{}.'.format(tag) + '/'.join(
                         [test['@classname'], test['@name']]) + '.exec'
                     data_list = [str(test['@time'])]
                     test_output = lnt.testing.TestSamples(full_test_name, data_list)
                     test_results.append(test_output)
-            else:
-                test = output['testsuites']['testsuite']['testcase']
-                full_test_name = '{}.'.format(tag) + '/'.join(
-                    [test['@classname'], test['@name']]) + '.exec'
-                data_list = [str(test['@time'])]
-                test_output = lnt.testing.TestSamples(full_test_name,
-                                                      data_list)
-                test_results.append(test_output)
 
         return test_results
 
+    def _normalise_xml(self, output):
+        if not isinstance(output['testsuites']['testsuite'], list):
+            output['testsuites']['testsuite'] = [
+                output['testsuites']['testsuite']]
+
+        for test_suite in output['testsuites']['testsuite']:
+            if not isinstance(test_suite['testcase'], list):
+                test_suite['testcase'] = [test_suite['testcase']]
 
 class CouchbaseTest(builtintest.BuiltinTest):
     def describe(self):

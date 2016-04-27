@@ -28,21 +28,23 @@ class CouchbaseTestResult(object):
             subprocess.check_call(self.command, cwd=os.getcwd(), shell=True)
         except subprocess.CalledProcessError:
             print 'failed to run'
+        else:
+            self.output = [xmltodict.parse(open(output, 'r'))
+                           for output in self.output]
 
     def generate_report(self, tag):
         test_results = []
         for output in self.output:
-            output_dict = xmltodict.parse(open(output, 'r'))
-            if isinstance(output_dict['testsuites']['testsuite']['testcase'],
+            if isinstance(output['testsuites']['testsuite']['testcase'],
                           list):
-                for test in output_dict['testsuites']['testsuite']['testcase']:
+                for test in output['testsuites']['testsuite']['testcase']:
                     full_test_name = '{}.'.format(tag) + '/'.join(
                         [test['@classname'], test['@name']]) + '.exec'
                     data_list = [str(test['@time'])]
                     test_output = lnt.testing.TestSamples(full_test_name, data_list)
                     test_results.append(test_output)
             else:
-                test = output_dict['testsuites']['testsuite']['testcase']
+                test = output['testsuites']['testsuite']['testcase']
                 full_test_name = '{}.'.format(tag) + '/'.join(
                     [test['@classname'], test['@name']]) + '.exec'
                 data_list = [str(test['@time'])]

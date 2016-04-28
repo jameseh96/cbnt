@@ -17,6 +17,10 @@ class CouchbaseTestResult(object):
         self.command = command
         self.output = output if isinstance(output, list) else [output]
         self._run_test()
+        # The tests may involve some tear down time
+        # Sleep the thread to eliminate this being a factor
+        # for deviations between tests
+        time.sleep(5)
 
     def _run_test(self):
         for output in self.output:

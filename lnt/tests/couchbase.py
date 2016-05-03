@@ -79,10 +79,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
 
     def _generate_report(self, tag, test_results):
         machine = lnt.testing.Machine('test-machine', {})
-        run_info = {'run_order': str(self.run_order),
-                    't': str(calendar.timegm(time.gmtime())),
-                    'tag': tag}
-
+        run_info = self._generate_run_info(tag)
         run = lnt.testing.Run(self.start, self.end, info=run_info)
         test_outputs = []
         for test_result in test_results:
@@ -115,6 +112,22 @@ class CouchbaseTest(builtintest.BuiltinTest):
                         for test in config]
         self.end = datetime.datetime.utcnow()
         return test_results
+
+    def _generate_run_info(self, tag):
+        env_vars = ['BUILD_NUMBER',
+                    'GERRIT_CHANGE_COMMIT_MESSAGE',
+                    'GERRIT_CHANGE_OWNER_NAME'
+                    'GERRIT_CHANGE_URL'
+                    'BUILD_URL']
+
+        run_info = {env_var: os.getenv(env_var, '') for env_var in env_vars
+                    if os.getenv(env_var, '')}
+
+        run_info.update({'run_order': str(self.run_order),
+                         't': str(calendar.timegm(time.gmtime())),
+                         'tag': tag})
+
+        return run_info
 
     def submit_helper(self, parsed_args):
         """Submit the report to the server.  If no server

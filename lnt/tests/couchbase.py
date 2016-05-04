@@ -116,14 +116,15 @@ class CouchbaseTest(builtintest.BuiltinTest):
     def _generate_run_info(self, tag):
         env_vars = ['BUILD_NUMBER',
                     'GERRIT_CHANGE_COMMIT_MESSAGE',
-                    'GERRIT_CHANGE_OWNER_NAME'
-                    'GERRIT_CHANGE_URL'
+                    'GERRIT_CHANGE_OWNER_NAME',
+                    'GERRIT_CHANGE_URL',
                     'BUILD_URL']
 
         run_info = {env_var: os.getenv(env_var, '') for env_var in env_vars
                     if os.getenv(env_var, '')}
 
-        run_info.update({'run_order': str(self.run_order),
+        run_info.update({'git_sha': os.getenv('GERRIT_PATCHSET_REVISION', 'test'),
+                         'run_order': str(self.run_order),
                          't': str(calendar.timegm(time.gmtime())),
                          'tag': tag})
 

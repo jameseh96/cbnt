@@ -176,6 +176,7 @@ def initialize_memcached_definition(engine, session):
     # to revise this over time.
     ts.order_fields.append(OrderField(name="llvm_project_revision",
                                       info_key="run_order", ordinal=0))
+    ts.order_fields.append(OrderField(name="git_sha", info_key="git_sha"))
 
     # We are only interested in simple runs, so we expect exactly four fields
     # per test.

@@ -137,7 +137,7 @@ class TestSuiteDB(object):
                     if order >= order_to_find and \
                           (best_order is None or order < best_order):
                         best_order = order
-                
+
                 # Find the most recent run on this machine that used
                 # that order.
                 closest_run = None
@@ -231,7 +231,11 @@ class TestSuiteDB(object):
                 # where possible. We ignore whitespace and convert each dot
                 # separated component to an integer if is is numeric.
                 def convert_field(value):
-                    items = value.strip().split('.')
+                    try:
+                        items = value.strip().split('.')
+                    except AttributeError:
+                        return
+
                     for i,item in enumerate(items):
                         if item.isdigit():
                             items[i] = int(item, 10)

@@ -54,6 +54,10 @@ ALTER TABLE "%s_Sample"
 ADD COLUMN "ProfileID" INTEGER
     """ % (db_key_name,))
 
+    session.connection().execute("""
+    ALTER TABLE "%s_CV_Sample"
+    ADD COLUMN "ProfileID" INTEGER
+        """ % (db_key_name,))
     # Create tables. We commit now since databases like Postgres run
     # into deadlocking issues due to previous queries that we have run
     # during the upgrade process. The commit closes all of the

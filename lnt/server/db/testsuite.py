@@ -70,6 +70,10 @@ class TestSuite(Base):
     order_fields = relation('OrderField', backref='test_suite')
     run_fields = relation('RunField', backref='test_suite')
     sample_fields = relation('SampleField', backref='test_suite')
+    cv_order_fields = relation('CVOrderField', backref='test_suite')
+    cv_run_fields = relation('CVRunField', backref='test_suite')
+    cv_sample_fields = relation('CVSampleField', backref='test_suite')
+
 
     def __init__(self, name, db_key_name):
         self.name = name
@@ -170,6 +174,62 @@ class RunField(FieldMixin, Base):
     def __repr__(self):
         return '%s%r' % (self.__class__.__name__, (self.name, self.info_key))
 
+class CVOrderField(FieldMixin, Base):
+    __tablename__ = 'TestSuiteCVOrderFields'
+
+    id = Column("ID", Integer, primary_key=True)
+    test_suite_id = Column("TestSuiteID", Integer, ForeignKey('TestSuite.ID'),
+                           index=True)
+    name = Column("Name", String(256))
+
+    # The info key describes the key to expect this field to be present as in
+    # the reported machine information. Missing keys result in NULL values in
+    # the database.
+    info_key = Column("InfoKey", String(256))
+
+    # The ordinal index this field should be used at for creating a
+    # lexicographic ordering amongst runs.
+    ordinal = Column("Ordinal", Integer)
+
+    def __init__(self, name, info_key, ordinal):
+        assert isinstance(ordinal, int) and ordinal >= 0
+
+        self.name = name
+        self.info_key = info_key
+        self.ordinal = ordinal
+
+        # Column instance for fields which have been bound (non-DB
+        # parameter). This is provided for convenience in querying.
+        self.column = None
+
+    def __repr__(self):
+        return '%s%r' % (self.__class__.__name__, (self.name, self.info_key,
+                                                   self.ordinal))
+
+class CVRunField(FieldMixin, Base):
+    __tablename__ = 'TestSuiteCVRunFields'
+
+    id = Column("ID", Integer, primary_key=True)
+    test_suite_id = Column("TestSuiteID", Integer, ForeignKey('TestSuite.ID'),
+                           index=True)
+    name = Column("Name", String(256))
+
+    # The info key describes the key to expect this field to be present as in
+    # the reported machine information. Missing keys result in NULL values in
+    # the database.
+    info_key = Column("InfoKey", String(256))
+
+    def __init__(self, name, info_key):
+        self.name = name
+        self.info_key = info_key
+
+        # Column instance for fields which have been bound (non-DB
+        # parameter). This is provided for convenience in querying.
+        self.column = None
+
+    def __repr__(self):
+        return '%s%r' % (self.__class__.__name__, (self.name, self.info_key))
+
 class SampleField(FieldMixin, Base):
     __tablename__ = 'TestSuiteSampleFields'
 
@@ -198,6 +258,53 @@ class SampleField(FieldMixin, Base):
     # This assumption can be inverted by setting this column to nonzero.
     bigger_is_better = Column("bigger_is_better", Integer)
     
+    def __init__(self, name, type, info_key, status_field = None,
+                 bigger_is_better = 0):
+        self.name = name
+        self.type = type
+        self.info_key = info_key
+        self.status_field = status_field
+        self.bigger_is_better = bigger_is_better
+
+        # Index of this column.
+        self.index = None
+
+        # Column instance for fields which have been bound (non-DB
+        # parameter). This is provided for convenience in querying.
+        self.column = None
+
+    def __repr__(self):
+        return '%s%r' % (self.__class__.__name__, (self.name, self.type,
+                                                   self.info_key))
+
+class CVSampleField(FieldMixin, Base):
+    __tablename__ = 'TestSuiteCVSampleFields'
+
+    id = Column("ID", Integer, primary_key=True)
+    test_suite_id = Column("TestSuiteID", Integer, ForeignKey('TestSuite.ID'),
+                           index=True)
+    name = Column("Name", String(256))
+
+    # The type of sample this is.
+    type_id = Column("Type", Integer, ForeignKey('SampleType.ID'))
+    type = relation(SampleType)
+
+    # The info key describes the key to expect this field to be present as in
+    # the reported machine information. Missing keys result in NULL values in
+    # the database.
+    info_key = Column("InfoKey", String(256))
+
+    # The status field is used to create a relation to the sample field that
+    # reports the status (pass/fail/etc.) code related to this value. This
+    # association is used by UI code to present the two status fields together.
+    status_field_id = Column("status_field", Integer, ForeignKey(
+            'TestSuiteCVSampleFields.ID'))
+    status_field = relation('CVSampleField', remote_side=id)
+
+    # Most real type samples assume lower values are better than higher values.
+    # This assumption can be inverted by setting this column to nonzero.
+    bigger_is_better = Column("bigger_is_better", Integer)
+
     def __init__(self, name, type, info_key, status_field = None,
                  bigger_is_better = 0):
         self.name = name

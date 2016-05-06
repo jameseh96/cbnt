@@ -18,5 +18,8 @@ def upgrade(engine):
 ALTER TABLE "TestSuiteSampleFields"
 ADD COLUMN "bigger_is_better" INTEGER DEFAULT 0
 """)
-    
+    session.connection().execute("""
+    ALTER TABLE "TestSuiteCVSampleFields"
+    ADD COLUMN "bigger_is_better" INTEGER DEFAULT 0
+    """)
     session.commit()

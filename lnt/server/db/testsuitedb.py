@@ -44,6 +44,9 @@ class TestSuiteDB(object):
         self.order_fields = list(self.test_suite.order_fields)
         self.run_fields = list(self.test_suite.run_fields)
         self.sample_fields = list(self.test_suite.sample_fields)
+        self.cv_order_fields = list(self.test_suite.cv_order_fields)
+        self.cv_run_fields = list(self.test_suite.cv_run_fields)
+        self.cv_sample_fields = list(self.test_suite.cv_sample_fields)
         for i,field in enumerate(self.sample_fields):
             field.index = i
 
@@ -137,7 +140,7 @@ class TestSuiteDB(object):
                     if order >= order_to_find and \
                           (best_order is None or order < best_order):
                         best_order = order
-                
+
                 # Find the most recent run on this machine that used
                 # that order.
                 closest_run = None
@@ -231,17 +234,18 @@ class TestSuiteDB(object):
                 # where possible. We ignore whitespace and convert each dot
                 # separated component to an integer if is is numeric.
                 def convert_field(value):
-                    items = value.strip().split('.')
+                    try:
+                        items = value.strip().split('.')
+                    except AttributeError:
+                        return
+
                     for i,item in enumerate(items):
                         if item.isdigit():
                             items[i] = int(item, 10)
                     return tuple(items)
 
                 # Compare every field in lexicographic order.
-                return cmp(tuple(convert_field(self.get_field(item))
-                                 for item in self.fields),
-                           tuple(convert_field(b.get_field(item))
-                                 for item in self.fields))
+                return int(self.llvm_project_revision) - int(b.llvm_project_revision)
                                  
             def __json__(self):
                 order = dict((item.name, self.get_field(item))
@@ -249,7 +253,87 @@ class TestSuiteDB(object):
                 order[u'id'] = self.id
                 return strip(order)
                 
-                
+        class CVOrder(self.base, ParameterizedMixin):
+            __tablename__ = db_key_name + '_CV_Order'
+
+            # We guarantee that our fields are stored in the order they are
+            # supposed to be lexicographically compared, the __cmp__ method
+            # relies on this.
+            fields = sorted(self.cv_order_fields,
+                            key=lambda of: of.ordinal)
+
+            id = Column("ID", Integer, primary_key=True)
+
+            # Dynamically create fields for all of the test suite defined order
+            # fields.
+            class_dict = locals()
+            for item in self.cv_order_fields:
+                if item.name in class_dict:
+                    raise ValueError, "test suite defines reserved key %r" % (
+                        name,)
+
+                class_dict[item.name] = item.column = Column(
+                    item.name, String(256))
+
+            def __init__(self, previous_order_id=None, next_order_id=None,
+                         **kwargs):
+
+                # Initialize fields (defaulting to None, for now).
+                for item in self.fields:
+                    self.set_field(item, kwargs.get(item.name))
+
+            def __repr__(self):
+                fields = dict((item.name, self.get_field(item))
+                              for item in self.fields)
+
+                return '%s_%s(%r, **%r)' % (
+                    db_key_name, self.__class__.__name__,
+                    self.parent_order_id, fields)
+
+            def as_ordered_string(self):
+                """Return a readable value of the order object by printing the
+                fields in lexicographic order."""
+
+                # If there is only a single field, return it.
+                if len(self.fields) == 1:
+                    return self.get_field(self.fields[0])
+
+                # Otherwise, print as a tuple of string.
+                return '(%s)' % (
+                    ', '.join(self.get_field(field)
+                              for field in self.fields),)
+
+            def __cmp__(self, b):
+                # SA occassionally uses comparison to check model instances
+                # verse some sentinels, so we ensure we support comparison
+                # against non-instances.
+                if self.__class__ is not b.__class__:
+                    return -1
+
+                # Compare each field numerically integer or integral version,
+                # where possible. We ignore whitespace and convert each dot
+                # separated component to an integer if is is numeric.
+                def convert_field(value):
+                    try:
+                        items = value.strip().split('.')
+                    except AttributeError:
+                        return
+
+                    for i, item in enumerate(items):
+                        if item.isdigit():
+                            items[i] = int(item, 10)
+                    return tuple(items)
+
+                # Compare every field in lexicographic order.
+                return int(self.llvm_project_revision) - int(
+                    b.llvm_project_revision)
+
+            def __json__(self):
+                order = dict((item.name, self.get_field(item))
+                             for item in self.fields)
+                order[u'id'] = self.id
+                return strip(order)
+
         class Run(self.base, ParameterizedMixin):
             __tablename__ = db_key_name + '_Run'
 
@@ -311,7 +395,7 @@ class TestSuiteDB(object):
                 self.machine
                 self.order
                 return strip(self.__dict__)
-                         
+
         class Test(self.base, ParameterizedMixin):
             __tablename__ = db_key_name + '_Test'
 
@@ -326,6 +410,68 @@ class TestSuiteDB(object):
                                     (self.name,))
                                     
             def __json__(self):
+                return strip(self.__dict__)
+
+        class CVRun(self.base, ParameterizedMixin):
+            __tablename__ = db_key_name + '_CV_Run'
+
+            fields = self.cv_run_fields
+            id = Column("ID", Integer, primary_key=True)
+            machine_id = Column("MachineID", Integer, ForeignKey(Machine.id),
+                                index=True)
+            order_id = Column("OrderID", Integer, ForeignKey(CVOrder.id),
+                              index=True)
+            imported_from = Column("ImportedFrom", String(512))
+            start_time = Column("StartTime", DateTime)
+            end_time = Column("EndTime", DateTime)
+            simple_run_id = Column("SimpleRunID", Integer)
+
+            # The parameters blob is used to store any additional information
+            # reported by the run but not promoted into the machine record. Such
+            # data is stored as a JSON encoded blob.
+            parameters_data = Column("Parameters", Binary)
+
+            machine = sqlalchemy.orm.relation(Machine)
+            order = sqlalchemy.orm.relation(CVOrder)
+
+            # Dynamically create fields for all of the test suite defined run
+            # fields.
+            #
+            # FIXME: We are probably going to want to index on some of these,
+            # but need a bit for that in the test suite definition.
+            class_dict = locals()
+            for item in fields:
+                if item.name in class_dict:
+                    raise ValueError, "test suite defines reserved key %r" % (
+                        name,)
+
+                class_dict[item.name] = item.column = Column(
+                    item.name, String(256))
+
+            def __init__(self, machine, order, start_time, end_time):
+                self.machine = machine
+                self.order = order
+                self.start_time = start_time
+                self.end_time = end_time
+                self.imported_from = None
+
+            def __repr__(self):
+                return '%s_%s%r' % (db_key_name, self.__class__.__name__,
+                                    (self.machine, self.order, self.start_time,
+                                     self.end_time))
+
+            @property
+            def parameters(self):
+                """dictionary access to the BLOB encoded parameters data"""
+                return dict(json.loads(self.parameters_data))
+
+            @parameters.setter
+            def parameters(self, data):
+                self.parameters_data = json.dumps(sorted(data.items()))
+
+            def __json__(self):
+                self.machine
+                self.order
                 return strip(self.__dict__)
 
         class Profile(self.base):
@@ -463,7 +609,111 @@ class TestSuiteDB(object):
                 return '%s_%s(%r, %r, **%r)' % (
                     db_key_name, self.__class__.__name__,
                     self.run, self.test, fields)
-        
+
+        class CVSample(self.base, ParameterizedMixin):
+            __tablename__ = db_key_name + '_CV_Sample'
+
+            fields = self.cv_sample_fields
+            id = Column("ID", Integer, primary_key=True)
+            # We do not need an index on run_id, this is covered by the compound
+            # (Run(ID),Test(ID)) index we create below.
+            run_id = Column("RunID", Integer, ForeignKey(CVRun.id))
+            test_id = Column("TestID", Integer, ForeignKey(Test.id),
+                             index=True)
+            profile_id = Column("ProfileID", Integer, ForeignKey(Profile.id))
+
+            run = sqlalchemy.orm.relation(CVRun)
+            test = sqlalchemy.orm.relation(Test)
+            profile = sqlalchemy.orm.relation(Profile)
+
+            @staticmethod
+            def get_primary_fields():
+                """
+                get_primary_fields() -> [SampleField*]
+
+                Get the primary sample fields (those which are not associated
+                with some other sample field).
+                """
+                status_fields = set(s.status_field
+                                    for s in self.CVSample.fields
+                                    if s.status_field is not None)
+                for field in self.CVSample.fields:
+                    if field not in status_fields:
+                        yield field
+
+            @staticmethod
+            def get_metric_fields():
+                """
+                get_metric_fields() -> [SampleField*]
+
+                Get the sample fields which represent some kind of metric, i.e.
+                those which have a value that can be interpreted as better or
+                worse than other potential values for this field.
+                """
+                for field in self.CVSample.fields:
+                    if field.type.name == 'Real':
+                        yield field
+
+            @staticmethod
+            def get_hash_of_binary_field():
+                """
+                get_hash_of_binary_field() -> SampleField
+
+                Get the sample field which represents a hash of the binary
+                being tested. This field will compare equal iff two binaries
+                are considered to be identical, e.g. two different compilers
+                producing identical code output.
+
+                Returns None if such a field isn't available.
+                """
+                for field in self.CVSample.fields:
+                    if field.name == 'hash':
+                        return field
+                return None
+
+            # Dynamically create fields for all of the test suite defined
+            # sample fields.
+            #
+            # FIXME: We might want to index some of these, but for a different
+            # reason than above. It is possible worth it to turn the compound
+            # index below into a covering index. We should evaluate this once
+            # the new UI is up.
+            class_dict = locals()
+            for item in self.cv_sample_fields:
+                if item.name in class_dict:
+                    raise ValueError, "test suite defines reserved key %r" % (
+                        name,)
+
+                if item.type.name == 'Real':
+                    item.column = Column(item.name, Float)
+                elif item.type.name == 'Status':
+                    item.column = Column(item.name, Integer, ForeignKey(
+                        testsuite.StatusKind.id))
+                elif item.type.name == 'Hash':
+                    item.column = Column(item.name, String)
+                else:
+                    raise ValueError, (
+                        "test suite defines unknown sample type %r"(
+                            item.type.name, ))
+
+                class_dict[item.name] = item.column
+
+            def __init__(self, run, test, **kwargs):
+                self.run = run
+                self.test = test
+
+                # Initialize sample fields (defaulting to 0, for now).
+                for item in self.fields:
+                    self.set_field(item, kwargs.get(item.name, None))
+
+            def __repr__(self):
+                fields = dict((item.name, self.get_field(item))
+                              for item in self.fields)
+
+                return '%s_%s(%r, %r, **%r)' % (
+                    db_key_name, self.__class__.__name__,
+                    self.run, self.test, fields)
+
         class FieldChange(self.base, ParameterizedMixin):
             """FieldChange represents a change in between the values
             of the same field belonging to two samples from consecutive runs."""
@@ -520,8 +770,8 @@ class TestSuiteDB(object):
                 self.run
                 self.start_order
                 self.end_order
-                return strip(self.__dict__) 
-                        
+                return strip(self.__dict__)
+
 
         class Regression(self.base, ParameterizedMixin):
             """Regession hold data about a set of RegressionIndicies."""
@@ -595,6 +845,9 @@ class TestSuiteDB(object):
         self.Profile = Profile
         self.Sample = Sample
         self.Order = Order
+        self.CVOrder = CVOrder
+        self.CVRun = CVRun
+        self.CVSample = CVSample
         self.FieldChange = FieldChange
         self.Regression = Regression
         self.RegressionIndicator = RegressionIndicator
@@ -669,7 +922,7 @@ class TestSuiteDB(object):
 
             return machine,True
 
-    def _getOrCreateOrder(self, run_parameters):
+    def _getOrCreateOrder(self, run_parameters, cv=False):
         """
         _getOrCreateOrder(data) -> Order, bool
 
@@ -682,12 +935,18 @@ class TestSuiteDB(object):
         The boolean result indicates whether the returned record was constructed
         or not.
         """
+        if cv:
+            order_type = self.CVOrder
+            order_fields = self.cv_order_fields
+        else:
+            order_type = self.Order
+            order_fields = self.order_fields
 
-        query = self.query(self.Order)
-        order = self.Order()
+        query = self.query(order_type)
+        order = order_type()
 
         # First, extract all of the specified order fields.
-        for item in self.order_fields:
+        for item in order_fields:
             if item.info_key in run_parameters:
                 value = run_parameters.pop(item.info_key)
             else:
@@ -711,7 +970,7 @@ supplied run is missing required run parameter: %r""" % (
             self.v4db.session.commit()
 
             # Load all the orders.
-            orders = list(self.query(self.Order))
+            orders = list(self.query(order_type))
 
             # Sort the objects to form the total ordering.
             orders.sort()
@@ -721,18 +980,19 @@ supplied run is missing required run parameter: %r""" % (
 
             # Insert this order into the linked list which forms the total
             # ordering.
-            if index > 0:
-                previous_order = orders[index - 1]
-                previous_order.next_order_id = order.id
-                order.previous_order_id = previous_order.id
-            if index + 1 < len(orders):
-                next_order = orders[index + 1]
-                next_order.previous_order_id = order.id
-                order.next_order_id = next_order.id
+            if not cv:
+                if index > 0:
+                    previous_order = orders[index - 1]
+                    previous_order.next_order_id = order.id
+                    order.previous_order_id = previous_order.id
+                if index + 1 < len(orders):
+                    next_order = orders[index + 1]
+                    next_order.previous_order_id = order.id
+                    order.next_order_id = next_order.id
 
             return order,True
 
-    def _getOrCreateRun(self, run_data, machine):
+    def _getOrCreateRun(self, run_data, machine, cv=False):
         """
         _getOrCreateRun(data) -> Run, bool
 
@@ -750,7 +1010,7 @@ supplied run is missing required run parameter: %r""" % (
         run_parameters.pop('tag')
 
         # Find the order record.
-        order,inserted = self._getOrCreateOrder(run_parameters)
+        order,inserted = self._getOrCreateOrder(run_parameters, cv=cv)
         start_time = datetime.datetime.strptime(run_data['Start Time'],
                                                 "%Y-%m-%d %H:%M:%S")
         end_time = datetime.datetime.strptime(run_data['End Time'],
@@ -761,15 +1021,22 @@ supplied run is missing required run parameter: %r""" % (
         # the record to possibly add.
         #
         # FIXME: This feels inelegant, can't SA help us out here?
-        query = self.query(self.Run).\
-            filter(self.Run.machine_id == machine.id).\
-            filter(self.Run.order_id == order.id).\
-            filter(self.Run.start_time == start_time).\
-            filter(self.Run.end_time == end_time)
-        run = self.Run(machine, order, start_time, end_time)
+        if cv:
+            run_type = self.CVRun
+            run_fields = self.cv_run_fields
+        else:
+            run_type = self.Run
+            run_fields = self.run_fields
+
+        query = self.query(run_type).\
+            filter(run_type.machine_id == machine.id).\
+            filter(run_type.order_id == order.id).\
+            filter(run_type.start_time == start_time).\
+            filter(run_type.end_time == end_time)
+        run = run_type(machine, order, start_time, end_time)
 
         # First, extract all of the specified run fields.
-        for item in self.run_fields:
+        for item in run_fields:
             if item.info_key in run_parameters:
                 value = run_parameters.pop(item.info_key)
             else:
@@ -783,7 +1050,7 @@ supplied run is missing required run parameter: %r""" % (
 
         # Any remaining parameters are saved as a JSON encoded array.
         run.parameters = run_parameters
-        query = query.filter(self.Run.parameters_data == run.parameters_data)
+        query = query.filter(run_type.parameters_data == run.parameters_data)
 
         # Execute the query to see if we already have this run.
         try:
@@ -794,7 +1061,7 @@ supplied run is missing required run parameter: %r""" % (
 
             return run,True
 
-    def _importSampleValues(self, tests_data, run, tag, commit, config):
+    def _importSampleValues(self, tests_data, run, tag, commit, config, cv=False):
         # We now need to transform the old schema data (composite samples split
         # into multiple tests with mangling) into the V4DB format where each
         # sample is a complete record.
@@ -806,6 +1073,12 @@ supplied run is missing required run parameter: %r""" % (
         test_cache = dict((test.name, test)
                           for test in self.query(self.Test))
 
+        if cv:
+            sample_fields = self.cv_sample_fields
+            sample_type = self.CVSample
+        else:
+            sample_fields = self.sample_fields
+            sample_type = self.Sample
         # First, we aggregate all of the samples by test name. The schema allows
         # reporting multiple values for a test in two ways, one by multiple
         # samples and the other by multiple test entries with the same test
@@ -844,7 +1117,7 @@ test %r is misnamed for reporting under schema %r""" % (
                 test_name = name[:-len('.profile')]
                 sample_field = 'profile'
             else:
-                for item in self.sample_fields:
+                for item in sample_fields:
                     if name.endswith(item.info_key):
                         test_name = name[:-len(item.info_key)]
                         sample_field = item
@@ -865,7 +1138,7 @@ test %r is misnamed for reporting under schema %r""" % (
                 record_key = (test_name, i)
                 sample = sample_records.get(record_key)
                 if sample is None:
-                    sample_records[record_key] = sample = self.Sample(run, test)
+                    sample_records[record_key] = sample = sample_type(run, test)
                     self.add(sample)
 
                 if sample_field != 'profile':
@@ -875,7 +1148,7 @@ test %r is misnamed for reporting under schema %r""" % (
                                                   self.Profile(value, config,
                                                                test_name))
 
-    def importDataFromDict(self, data, commit, config=None):
+    def importDataFromDict(self, data, commit, config=None, cv=False):
         """
         importDataFromDict(data) -> Run, bool
 
@@ -890,7 +1163,7 @@ test %r is misnamed for reporting under schema %r""" % (
         machine,inserted = self._getOrCreateMachine(data['Machine'])
 
         # Construct the run entry.
-        run,inserted = self._getOrCreateRun(data['Run'], machine)
+        run,inserted = self._getOrCreateRun(data['Run'], machine, cv=cv)
 
         # Get the schema tag.
         tag = data['Run']['Info']['tag']
@@ -900,7 +1173,7 @@ test %r is misnamed for reporting under schema %r""" % (
         if not inserted:
             return False, run
         
-        self._importSampleValues(data['Tests'], run, tag, commit, config)
+        self._importSampleValues(data['Tests'], run, tag, commit, config, cv=cv)
 
         return True, run
 
@@ -970,7 +1243,6 @@ test %r is misnamed for reporting under schema %r""" % (
             join(self.Run).\
             filter(self.Run.machine == run.machine).distinct().all()
         all_machine_orders.sort()
-
         # Find the index of the current run.
         index = all_machine_orders.index(run.order)
 
@@ -1004,3 +1276,8 @@ test %r is misnamed for reporting under schema %r""" % (
 
     def get_next_runs_on_machine(self, run, N):
         return self.get_adjacent_runs_on_machine(run, N, direction = 1)
+
+    def get_parent_run(self, run):
+        parent_commit = self.query(self.Order).join(self.Run).filter(self.Run.id == run.id).first().parent_commit
+        parent_run = self.query(self.Run).join(self.Order).filter(self.Order.git_sha == parent_commit).first()
+        return parent_run

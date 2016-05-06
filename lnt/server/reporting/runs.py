@@ -12,7 +12,7 @@ def generate_run_report(run, baseurl, only_html_body=False,
                         num_comparison_runs=0, result=None,
                         compare_to=None, baseline=None,
                         aggregation_fn=lnt.util.stats.safe_min, confidence_lv=.05,
-                        styles=dict(), classes=dict()):
+                        styles=dict(), classes=dict(), cv=False):
     """
     generate_run_report(...) -> (str: subject, str: text_report,
                                  str: html_report)
@@ -26,6 +26,7 @@ def generate_run_report(run, baseurl, only_html_body=False,
     start_time = time.time()
 
     ts = run.testsuite
+
     machine = run.machine
     machine_parameters = machine.parameters
     
@@ -40,10 +41,14 @@ def generate_run_report(run, baseurl, only_html_body=False,
     if baseline is compare_to:
         baseline = None
 
+
+
     # Gather the runs to use for statistical data.
     comparison_start_run = compare_to or run
+
     comparison_window = list(ts.get_previous_runs_on_machine(
             comparison_start_run, num_comparison_runs))
+
     if baseline:
         baseline_window = list(ts.get_previous_runs_on_machine(
                 baseline, num_comparison_runs))
@@ -71,6 +76,7 @@ def generate_run_report(run, baseurl, only_html_body=False,
     test_names = ts.query(ts.Test.name, ts.Test.id).\
         order_by(ts.Test.name).\
         filter(ts.Test.id.in_(sri.test_ids)).all()
+
     metric_fields = list(ts.Sample.get_metric_fields())
     num_total_tests = len(metric_fields) * len(test_names)
 

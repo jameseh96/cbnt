@@ -2,10 +2,12 @@ import argparse
 import builtintest
 import calendar
 import datetime
+import json
 import subprocess
 import os
 import sys
 import time
+import urllib2
 import yaml
 import xmltodict
 
@@ -69,7 +71,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         self.run_order = parsed_args.run_order
         test_results = self._run_tests(config)
         name = name.split()[-1]
-        report = self._generate_report(name, test_results)
+        report = self._generate_report(name, parsed_args.type, test_results)
         parsed_args.report_path = parsed_args.report_path or 'report.json'
         lnt_report_file = open(parsed_args.report_path, 'w')
         print >> lnt_report_file, report.render()
@@ -77,9 +79,9 @@ class CouchbaseTest(builtintest.BuiltinTest):
         self.submit_helper(parsed_args)
         exit(0)
 
-    def _generate_report(self, tag, test_results):
+    def _generate_report(self, tag, type, test_results):
         machine = lnt.testing.Machine('test-machine', {})
-        run_info = self._generate_run_info(tag)
+        run_info = self._generate_run_info(tag, type)
         run = lnt.testing.Run(self.start, self.end, info=run_info)
         test_outputs = []
         for test_result in test_results:
@@ -92,6 +94,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         parser = argparse.ArgumentParser(description='lol')
         parser.add_argument('config', help='location of the config.yaml file '
                             'for this test run')
+        parser.add_argument('type', choices=['master', 'cv'], help='type of result entry')
         parser.add_argument('--run_order', help='run order of this test run')
         parser.add_argument('-v', '--verbose', action='store_true', help='show verbose test results')
         parser.add_argument('--report_path', help='path to save report file to')
@@ -113,7 +116,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         self.end = datetime.datetime.utcnow()
         return test_results
 
-    def _generate_run_info(self, tag):
+    def _generate_run_info(self, tag, type):
         env_vars = ['BUILD_NUMBER',
                     'GERRIT_CHANGE_COMMIT_MESSAGE',
                     'GERRIT_CHANGE_OWNER_NAME',
@@ -128,7 +131,32 @@ class CouchbaseTest(builtintest.BuiltinTest):
                          't': str(calendar.timegm(time.gmtime())),
                          'tag': tag})
 
+        if type == 'cv':
+            run_info.update({'parent_commit': self._get_parent_commit()})
+
         return run_info
+
+    def _get_parent_commit(self):
+        required_variables = {'project': os.environ.get('GERRIT_PROJECT', None),
+                              'branch': os.environ.get('GERRIT_BRANCH', None),
+                              'change_id': os.environ.get('GERRIT_CHANGE_ID', None),
+                              'commit': os.environ.get('GERRIT_PATCHSET_REVISION', None)}
+
+        if all(required_variables.values()):
+            url = ('http://review.couchbase.org/changes/{project}~{branch}~'
+                   '{change_id}/revisions/{commit}/commit'
+                   .format(**required_variables))
+            print 'Getting parent commit from', url
+            response = urllib2.urlopen(url).read()
+            start_index = response.index('{')
+            json_response = json.loads(response[start_index:])
+            parent_commit = json_response['parents'][0]['commit']
+            return parent_commit
+
+        else:
+            print ('Unable to find required gerrit environment variables, '
+                   'exiting')
+            exit(1)
 
     def submit_helper(self, parsed_args):
         """Submit the report to the server.  If no server
@@ -138,7 +166,6 @@ class CouchbaseTest(builtintest.BuiltinTest):
         result = None
         if parsed_args.submit_url:
             from lnt.util import ServerUtil, ImportData
-            import urllib2
             for server in parsed_args.submit_url:
                 self.log("submitting result to %r" % (server,))
                 try:

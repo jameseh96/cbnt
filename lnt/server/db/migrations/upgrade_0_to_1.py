@@ -32,6 +32,9 @@ class TestSuite(Base):
     order_fields = relation('OrderField', backref='test_suite')
     run_fields = relation('RunField', backref='test_suite')
     sample_fields = relation('SampleField', backref='test_suite')
+    cv_order_fields = relation('CVOrderField', backref='test_suite')
+    cv_run_fields = relation('CVRunField', backref='test_suite')
+    cv_sample_fields = relation('CVSampleField', backref='test_suite')
 
 class MachineField(Base):
     __tablename__ = 'TestSuiteMachineFields'
@@ -58,6 +61,26 @@ class RunField(Base):
     name = Column("Name", String(256))
     info_key = Column("InfoKey", String(256))
 
+
+class CVOrderField(Base):
+    __tablename__ = 'TestSuiteCVOrderFields'
+    id = Column("ID", Integer, primary_key=True)
+    test_suite_id = Column("TestSuiteID", Integer, ForeignKey('TestSuite.ID'),
+                           index=True)
+    name = Column("Name", String(256))
+    info_key = Column("InfoKey", String(256))
+    ordinal = Column("Ordinal", Integer)
+
+
+class CVRunField(Base):
+    __tablename__ = 'TestSuiteCVRunFields'
+    id = Column("ID", Integer, primary_key=True)
+    test_suite_id = Column("TestSuiteID", Integer, ForeignKey('TestSuite.ID'),
+                           index=True)
+    name = Column("Name", String(256))
+    info_key = Column("InfoKey", String(256))
+
+
 class SampleField(Base):
     __tablename__ = 'TestSuiteSampleFields'
     id = Column("ID", Integer, primary_key=True)
@@ -70,6 +93,21 @@ class SampleField(Base):
     status_field_id = Column("status_field", Integer, ForeignKey(
             'TestSuiteSampleFields.ID'))
     status_field = relation('SampleField', remote_side=id)
+
+
+class CVSampleField(Base):
+    __tablename__ = 'TestSuiteCVSampleFields'
+    id = Column("ID", Integer, primary_key=True)
+    test_suite_id = Column("TestSuiteID", Integer, ForeignKey('TestSuite.ID'),
+                           index=True)
+    name = Column("Name", String(256))
+    type_id = Column("Type", Integer, ForeignKey('SampleType.ID'))
+    type = relation(SampleType)
+    info_key = Column("InfoKey", String(256))
+    status_field_id = Column("status_field", Integer, ForeignKey(
+            'TestSuiteCVSampleFields.ID'))
+    status_field = relation('CVSampleField', remote_side=id)
+
 
 def initialize_core(engine, session):
     # Create the tables.
@@ -128,66 +166,58 @@ def initialize_nts_definition(engine, session):
 
     session.add(ts)
 
-def initialize_epengine_definition(engine, session):
-    # Fetch the sample types.
-    real_sample_type = session.query(SampleType).\
-        filter_by(name = "Real").first()
-    status_sample_type = session.query(SampleType).\
-        filter_by(name = "Status").first()
+def initialize_couchbase_definition(engine, session, name, key_name):
+    real_sample_type = session.query(SampleType). \
+        filter_by(name="Real").first()
+    status_sample_type = session.query(SampleType). \
+        filter_by(name="Status").first()
 
     # Create a test suite compile with "lnt runtest nt".
-    ts = TestSuite(name="ep-engine", db_key_name="EP")
+    ts = TestSuite(name=name, db_key_name=key_name)
 
     # Promote the natural information produced by 'runtest nt' to fields.
-    ts.machine_fields.append(MachineField(name="hardware", info_key="hardware"))
+    ts.machine_fields.append(
+        MachineField(name="hardware", info_key="hardware"))
     ts.machine_fields.append(MachineField(name="os", info_key="os"))
 
     # The only reliable order currently is the "run_order" field. We will want
     # to revise this over time.
     ts.order_fields.append(OrderField(name="llvm_project_revision",
                                       info_key="run_order", ordinal=0))
+    ts.order_fields.append(
+        OrderField(name="git_sha", info_key="git_sha", ordinal=1))
+
+    ts.cv_order_fields.append(CVOrderField(name="llvm_project_revision",
+                                         info_key="run_order", ordinal=0))
+    ts.cv_order_fields.append(
+        CVOrderField(name="git_sha", info_key="git_sha", ordinal=1))
+    ts.cv_order_fields.append(
+        CVOrderField(name="parent_commit", info_key="parent_commit", ordinal=2))
 
     # We are only interested in simple runs, so we expect exactly four fields
     # per test.
     exec_status = SampleField(name="execution_status", type=status_sample_type,
-                              info_key=".exec.status")
-    exec_time = SampleField(name="execution_time", type=real_sample_type,
-                            info_key=".exec", status_field=exec_status)
-    ts.sample_fields.append(exec_time)
+                             info_key=".exec.status")
+    cv_exec_status = CVSampleField(name="execution_status",
+                        type = status_sample_type,
+    info_key = ".exec.status")
+
     ts.sample_fields.append(exec_status)
 
+    ts.sample_fields.append(
+        SampleField(name="execution_time", type=real_sample_type,
+                    info_key=".exec", status_field=exec_status))
+    ts.cv_sample_fields.append(cv_exec_status)
+    ts.cv_sample_fields.append(
+        CVSampleField(name="execution_time", type=real_sample_type,
+                      info_key=".exec", status_field=cv_exec_status))
     session.add(ts)
+
+def initialize_epengine_definition(engine, session):
+    initialize_couchbase_definition(engine, session, 'ep-engine', 'EP')
 
 def initialize_memcached_definition(engine, session):
-    # Fetch the sample types.
-    real_sample_type = session.query(SampleType).\
-        filter_by(name = "Real").first()
-    status_sample_type = session.query(SampleType).\
-        filter_by(name = "Status").first()
-
-    # Create a test suite compile with "lnt runtest nt".
-    ts = TestSuite(name="memcached", db_key_name="Memcached")
-
-    # Promote the natural information produced by 'runtest nt' to fields.
-    ts.machine_fields.append(MachineField(name="hardware", info_key="hardware"))
-    ts.machine_fields.append(MachineField(name="os", info_key="os"))
-
-    # The only reliable order currently is the "run_order" field. We will want
-    # to revise this over time.
-    ts.order_fields.append(OrderField(name="llvm_project_revision",
-                                      info_key="run_order", ordinal=0))
-    ts.order_fields.append(OrderField(name="git_sha", info_key="git_sha"))
-
-    # We are only interested in simple runs, so we expect exactly four fields
-    # per test.
-    exec_status = SampleField(name="execution_status", type=status_sample_type,
-                              info_key=".exec.status")
-    exec_time = SampleField(name="execution_time", type=real_sample_type,
-                            info_key=".exec", status_field=exec_status)
-    ts.sample_fields.append(exec_time)
-    ts.sample_fields.append(exec_status)
-
-    session.add(ts)
+    initialize_couchbase_definition(engine, session, 'memcached', 'Memcached')
 
 ###
 # Compile Testsuite Definition
@@ -299,6 +329,47 @@ def get_base_for_testsuite(test_suite):
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
 
+    class CVOrder(Base):
+        __tablename__ = db_key_name + '_CV_Order'
+
+        id = Column("ID", Integer, primary_key=True)
+
+        class_dict = locals()
+        for item in test_suite.cv_order_fields:
+            if item.name in class_dict:
+                raise ValueError, "test suite defines reserved key %r" % (
+                    name,)
+
+            class_dict[item.name] = item.column = Column(
+                item.name, String(256))
+
+    class CVRun(Base):
+        __tablename__ = db_key_name + '_CV_Run'
+
+        id = Column("ID", Integer, primary_key=True)
+        machine_id = Column("MachineID", Integer, ForeignKey(Machine.id),
+                            index=True)
+        order_id = Column("OrderID", Integer, ForeignKey(Order.id),
+                          index=True)
+        imported_from = Column("ImportedFrom", String(512))
+        start_time = Column("StartTime", DateTime)
+        end_time = Column("EndTime", DateTime)
+        simple_run_id = Column("SimpleRunID", Integer)
+
+        parameters_data = Column("Parameters", Binary)
+
+        machine = sqlalchemy.orm.relation(Machine)
+        order = sqlalchemy.orm.relation(Order)
+
+        class_dict = locals()
+        for item in test_suite.cv_run_fields:
+            if item.name in class_dict:
+                raise ValueError, "test suite defines reserved key %r" % (
+                    name,)
+
+            class_dict[item.name] = item.column = Column(
+                item.name, String(256))
+
     class Test(Base):
         __tablename__ = db_key_name + '_Test'
         id = Column("ID", Integer, primary_key=True)
@@ -333,6 +404,38 @@ def get_base_for_testsuite(test_suite):
                                  .format(item.type.name))
 
             class_dict[item.name] = item.column
+
+    class CVSample(Base):
+        __tablename__ = db_key_name + '_CV_Sample'
+
+        id = Column("ID", Integer, primary_key=True)
+
+        run_id = Column("RunID", Integer, ForeignKey(CVRun.id))
+        test_id = Column("TestID", Integer, ForeignKey(Test.id), index=True)
+
+        run = sqlalchemy.orm.relation(CVRun)
+        test = sqlalchemy.orm.relation(Test)
+
+        class_dict = locals()
+        for item in test_suite.cv_sample_fields:
+            if item.name in class_dict:
+                raise ValueError("test suite defines reserved key {}"
+                                 .format(name))
+            if item.type.name == 'Real':
+                item.column = Column(item.name, Float)
+            elif item.type.name == 'Status':
+                item.column = Column(item.name, Integer, ForeignKey(
+                    StatusKind.id))
+            elif item.type.name == 'Hash':
+                continue
+            else:
+                raise ValueError("test suite defines unknown sample type {}"
+                                 .format(item.type.name))
+
+            class_dict[item.name] = item.column
+
+    sqlalchemy.schema.Index("ix_%s_CVSample_CVRunID_TestID" % db_key_name,
+                            CVSample.run_id, CVSample.test_id)
 
     sqlalchemy.schema.Index("ix_%s_Sample_RunID_TestID" % db_key_name,
                             Sample.run_id, Sample.test_id)

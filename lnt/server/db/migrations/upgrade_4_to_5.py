@@ -33,6 +33,11 @@ UPDATE "TestSuiteSampleFields"
 SET bigger_is_better=1
 WHERE "Name"='score'
                                  """)
+    session.connection().execute("""
+    UPDATE "TestSuiteCVSampleFields"
+    SET bigger_is_better=1
+    WHERE "Name"='score'
+                                     """)
     session.commit()
 
     # FIXME: This is obviously not the right way to do this, but I gave up

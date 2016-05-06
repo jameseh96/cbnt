@@ -105,6 +105,7 @@ class V4DB(object):
         self.StatusKind = testsuite.StatusKind
         self.TestSuite = testsuite.TestSuite
         self.SampleField = testsuite.SampleField
+        self.CVSampleField = testsuite.CVSampleField
 
         # Resolve or create the known status kinds.
         self.pass_status_kind = self.query(testsuite.StatusKind)\
@@ -180,7 +181,7 @@ class V4DB(object):
         return sum([ts.query(ts.Test).count()
                     for ts in self.testsuite.values()])
 
-    def importDataFromDict(self, data, commit, config=None):
+    def importDataFromDict(self, data, commit, config=None, cv=False):
         # Select the database to import into.
         #
         # FIXME: Promote this to a top-level field in the data.
@@ -193,4 +194,4 @@ class V4DB(object):
             raise ValueError, "test suite %r not present in this database!" % (
                 db_name)
 
-        return db.importDataFromDict(data, commit, config)
+        return db.importDataFromDict(data, commit, config, cv=cv)

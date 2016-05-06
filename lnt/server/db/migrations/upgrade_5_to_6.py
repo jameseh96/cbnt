@@ -35,6 +35,11 @@ UPDATE "TestSuiteSampleFields"
 SET bigger_is_better=0
 WHERE "Name"='mem_bytes'
                                  """)
+    session.connection().execute("""
+    UPDATE "TestSuiteCVSampleFields"
+    SET bigger_is_better=0
+    WHERE "Name"='mem_bytes'
+                                     """)
     session.commit()
 
     # FIXME: This is obviously not the right way to do this, but I gave up

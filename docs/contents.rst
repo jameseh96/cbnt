@@ -22,6 +22,8 @@ Contents
 
    developer_guide
 
+   profiles
+   
    todo
 
 Indices and tables
@@ -30,3 +32,12 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+Module Listing
+--------------
+
+.. toctree::
+   :maxdepth: 2
+
+   modules/testing

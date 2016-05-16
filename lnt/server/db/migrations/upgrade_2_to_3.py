@@ -72,3 +72,5 @@ def upgrade(engine):
     upgrade_testsuite(engine, session, 'compile')
     upgrade_testsuite(engine, session, 'ep-engine')
     upgrade_testsuite(engine, session, 'memcached')
+    upgrade_testsuite(engine, session, 'ep-engine_cv')
+    upgrade_testsuite(engine, session, 'memcached_cv')

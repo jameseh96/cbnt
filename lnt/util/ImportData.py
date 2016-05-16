@@ -96,11 +96,14 @@ def import_and_report(config, db_name, db, file, format, commit=False,
     else:
         report_url = "localhost"
 
+    ts_name = data['Run']['Info'].get('tag')
+    cv = ts_name[-2] == 'cv'
+
     if not disable_report:
         #  This has the side effect of building the run report for
         #  this result.
         NTEmailReport.emailReport(result, db, run, report_url,
-                                  email_config, toAddress, success, commit)
+                                  email_config, toAddress, success, commit, cv=cv)
 
     result['added_machines'] = db.getNumMachines() - numMachines
     result['added_runs'] = db.getNumRuns() - numRuns
@@ -110,7 +113,8 @@ def import_and_report(config, db_name, db, file, format, commit=False,
 
     result['committed'] = commit
     result['run_id'] = run.id
-    ts_name = data['Run']['Info'].get('tag')
+
+
     if commit:
         db.commit()
         if db_config:

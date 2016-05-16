@@ -1008,3 +1008,7 @@ test %r is misnamed for reporting under schema %r""" % (
 
     def get_next_runs_on_machine(self, run, N):
         return self.get_adjacent_runs_on_machine(run, N, direction = 1)
+
+    def get_runs_from_commit(self, commit, N):
+        commit_run = self.query(self.Order).filter()
+        return self.get_previous_runs_on_machine(commit_run, N)

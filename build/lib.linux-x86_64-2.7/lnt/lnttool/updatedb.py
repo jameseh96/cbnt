@@ -1,0 +1,98 @@
+import os
+from optparse import OptionParser, OptionGroup
+import contextlib
+
+import lnt.server.instance
+from lnt.testing.util.commands import note, warning, error, fatal
+
+def action_updatedb(name, args):
+    """modify a database"""
+
+    from optparse import OptionParser, OptionGroup
+
+    parser = OptionParser("%s [options] <instance> <file>+"%name)
+    parser.add_option("", "--database", dest="database", default="default",
+                      help="database to modify [%default]")
+    parser.add_option("", "--testsuite", dest="testsuite",
+                      help="testsuite to modify")
+    parser.add_option("", "--commit", dest="commit", type=int,
+                      default=False)
+    parser.add_option("", "--show-sql", dest="show_sql", action="store_true",
+                      default=False)
+    parser.add_option("", "--delete-machine", dest="delete_machines",
+                      action="append", default=[])
+    parser.add_option("", "--delete-run", dest="delete_runs",
+                      action="append", default=[], type=int)    
+    parser.add_option("", "--delete-order", dest="delete_order", default=[], type=int)
+    (opts, args) = parser.parse_args(args)
+
+    if len(args) != 1:
+        parser.error("invalid number of arguments")
+
+    if opts.testsuite is None:
+        parser.error("--testsuite is required")
+
+    path, = args
+
+    # Load the instance.
+    instance = lnt.server.instance.Instance.frompath(path)
+
+    # Get the database and test suite.
+    with contextlib.closing(instance.get_database(opts.database,
+                                                  echo=opts.show_sql)) as db:
+        ts = db.testsuite[opts.testsuite]
+        order = None
+        # Compute a list of all the runs to delete.
+        if opts.delete_order:
+            order = ts.query(ts.Order).filter(ts.Order.id == opts.delete_order).one()
+            runs_to_delete = ts.query(ts.Run.id).filter(ts.Run.order_id == order.id).all()
+            runs_to_delete = [r[0] for r in runs_to_delete]
+        else:
+            runs_to_delete = list(opts.delete_runs)
+        
+        if opts.delete_machines:
+            runs_to_delete.extend(
+                id
+                for id, in ts.query(ts.Run.id).\
+                    join(ts.Machine).\
+                    filter(ts.Machine.name.in_(opts.delete_machines)))
+
+        # Delete all samples associated with those runs.
+        ts.query(ts.Sample).\
+            filter(ts.Sample.run_id.in_(runs_to_delete)).\
+            delete(synchronize_session=False)
+        
+        # Delete all FieldChanges and RegressionIndicators
+        for r in runs_to_delete:
+            fcs = ts.query(ts.FieldChange). \
+                filter(ts.FieldChange.run_id == r).all()
+            for f in fcs:
+                ris = ts.query(ts.RegressionIndicator). \
+                                filter(ts.RegressionIndicator.field_change_id == f.id).all()
+                for r in ris:
+                    ts.delete(r)
+                ts.delete(f)
+        # Delete all those runs.
+        ts.query(ts.Run).\
+            filter(ts.Run.id.in_(runs_to_delete)).\
+            delete(synchronize_session=False)
+
+        # Delete the machines.
+        for name in opts.delete_machines:
+            # Delete all FieldChanges associated with this machine.
+            ids = ts.query(ts.FieldChange.id).\
+                join(ts.Machine).filter(ts.Machine.name == name).all()
+            for i in ids:
+                ts.query(ts.FieldChange).filter(ts.FieldChange.id == i[0]).\
+                    delete()
+
+            num_deletes = ts.query(ts.Machine).filter_by(name=name).delete()
+            if num_deletes == 0:
+                warning("unable to find machine named: %r" % name)
+        if order:
+            ts.delete(order)
+
+        if opts.commit:
+            db.commit()
+        else:
+            db.rollback()

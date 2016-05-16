@@ -92,6 +92,16 @@ class Request(flask.Request):
 
         return self.testsuite
 
+    def get_cv_testsuite(self):
+        if self.cv_testsuite is None:
+            testsuites = self.get_db().testsuite
+            if g.testsuite_name[:-2] not in testsuites:
+                flask.abort(404)
+
+            self.testsuite = testsuites[g.testsuite_name[:-2]]
+
+        return self.testsuite
+
     def close(self):
         t = self.elapsed_time()
         if t > 10:

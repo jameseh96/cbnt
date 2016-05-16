@@ -1,0 +1,14 @@
+- test: perfsuite
+  command: "build/memcached/engine_testapp -E build/ep-engine/ep.so -T build/ep-engine/ep_perfsuite.so -v -e dbname=./value_eviction_perf -f xunit"
+  output:
+    - "output.Baseline.xml"
+    - "output.DCP_In-memory_(BINARY-RAND)_[As_is_vs._Compress].xml"
+    - "output.DCP_In-memory_(JSON-PADDED)_[As_is_vs._Compress].xml"
+    - "output.DCP_In-memory_(JSON-RAND)_[As_is_vs._Compress].xml"
+    - "output.With_background_DCP.xml"
+    - "output.With_background_TAP.xml"
+    - "output.With_constant_Expiry_pager.xml"
+    - "output.With_constant_defragmention.xml"
+- test: hashtable
+  command: 'build/ep-engine/ep-engine_hash_table_test --gtest_filter="*Add" --gtest_output=xml'
+  output: "test_detail.xml"

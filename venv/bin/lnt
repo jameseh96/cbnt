@@ -1,0 +1,10 @@
+#!/Users/matt/lnt/venv/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'LNT','console_scripts','lnt'
+__requires__ = 'LNT'
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.exit(
+        load_entry_point('LNT', 'console_scripts', 'lnt')()
+    )

@@ -144,6 +144,8 @@ def upgrade(engine):
     update_testsuite(engine, session, 'Compile')
     update_testsuite(engine, session, 'EP')
     update_testsuite(engine, session, 'Memcached')
+    update_testsuite(engine, session, 'EPCV')
+    update_testsuite(engine, session, 'MemcachedCV')
     
     # Commit the results.
     session.commit()

@@ -12,7 +12,7 @@ def generate_run_report(run, baseurl, only_html_body=False,
                         num_comparison_runs=0, result=None,
                         compare_to=None, baseline=None,
                         aggregation_fn=lnt.util.stats.safe_min, confidence_lv=.05,
-                        styles=dict(), classes=dict()):
+                        styles=dict(), classes=dict(), cv=False):
     """
     generate_run_report(...) -> (str: subject, str: text_report,
                                  str: html_report)
@@ -26,6 +26,9 @@ def generate_run_report(run, baseurl, only_html_body=False,
     start_time = time.time()
 
     ts = run.testsuite
+    if cv:
+        cv_ts = run.cv_testsuite
+
     machine = run.machine
     machine_parameters = machine.parameters
     
@@ -40,6 +43,8 @@ def generate_run_report(run, baseurl, only_html_body=False,
     if baseline is compare_to:
         baseline = None
 
+
+
     # Gather the runs to use for statistical data.
     comparison_start_run = compare_to or run
     comparison_window = list(ts.get_previous_runs_on_machine(
@@ -52,6 +57,8 @@ def generate_run_report(run, baseurl, only_html_body=False,
 
     # If we don't have an explicit baseline run or a comparison run, use the
     # previous run.
+    if cv:
+        compare_to = cv_ts.get_runs_from_commit(run)
     if compare_to is None and comparison_window:
         compare_to = comparison_window[0]
 

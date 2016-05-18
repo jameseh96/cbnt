@@ -9,3 +9,9 @@ lnt/.idea/
 venv/
 lnt/testing/profile/cPerf.so
 /LNT.egg-info
+build
+dist
+docs/_build
+lnt/server/ui/static/docs
+test_run_tmp
+tests/**/Output

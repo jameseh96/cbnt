@@ -72,7 +72,6 @@ def import_and_report(config, db_name, db, file, format, commit=False,
 
     importStartTime = time.time()
     cv = 'parent_commit' in data['Run']['Info']
-    print 'cv', cv
 
     try:
         success, run = db.importDataFromDict(data, commit, config=db_config, cv=cv)
@@ -125,13 +124,17 @@ def import_and_report(config, db_name, db, file, format, commit=False,
             #  We have to have a commit before we run, so subprocesses can
             #  see the submitted data.
             ts = db.testsuite.get(ts_name)
-            async_ops.async_fieldchange_calc(db_name, ts, run)
+            if not cv:
+                async_ops.async_fieldchange_calc(db_name, ts, run)
 
     else:
         db.rollback()
     # Add a handy relative link to the submitted run.
-
-    result['result_url'] = "db_{}/v4/{}/{}".format(db_name, ts_name, run.id)
+    if cv:
+        result['result_url'] = "db_{}/v4/{}/cv/{}".format(db_name, ts_name, run.id)
+    else:
+        result['result_url'] = "db_{}/v4/{}/{}".format(db_name, ts_name,
+                                                       run.id)
     result['report_time'] = time.time() - importStartTime
     result['total_time'] = time.time() - startTime
     note("Successfully created {}".format(result['result_url']))

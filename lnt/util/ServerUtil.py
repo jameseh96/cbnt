@@ -53,7 +53,6 @@ def submitFileToInstance(path, file, commit):
 
 
 def submitFile(url, file, commit, verbose):
-    print commit
     # If this is a real url, submit it using urllib.
     if '://' in url:
         result = submitFileToServer(url, file, commit)

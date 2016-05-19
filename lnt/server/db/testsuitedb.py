@@ -286,9 +286,9 @@ class TestSuiteDB(object):
                 fields = dict((item.name, self.get_field(item))
                               for item in self.fields)
 
-                return '%s_%s(%r, **%r)' % (
+                return '%s_%s(**%r)' % (
                     db_key_name, self.__class__.__name__,
-                    self.parent_order_id, fields)
+                    fields)
 
             def as_ordered_string(self):
                 """Return a readable value of the order object by printing the
@@ -1191,7 +1191,7 @@ test %r is misnamed for reporting under schema %r""" % (
     def getRun(self, id):
         return self.query(self.Run).filter_by(id=id).one()
 
-    def get_adjacent_runs_on_machine(self, run, N, direction = -1):
+    def get_adjacent_runs_on_machine(self, run, N, direction = -1, cv=False):
         """
         get_adjacent_runs_on_machine(run, N, direction = -1) -> [Run*]
 
@@ -1243,13 +1243,30 @@ test %r is misnamed for reporting under schema %r""" % (
             join(self.Run).\
             filter(self.Run.machine == run.machine).distinct().all()
         all_machine_orders.sort()
+
         # Find the index of the current run.
-        index = all_machine_orders.index(run.order)
+        if cv:
+            parent_order = self.get_parent_order(run)
+            if parent_order:
+                index = all_machine_orders.index(parent_order)
+            else:
+                index = max(0, len(all_machine_orders) - 1)
+        else:
+            index = all_machine_orders.index(run.order)
 
         # Gather the next N orders.
         if direction == -1:
             orders_to_return = all_machine_orders[max(0, index - N):index]
+            if cv:
+                if parent_order:
+                    orders_to_return.append(parent_order)
+                else:
+                    orders_to_return.append(all_machine_orders[-1])
+                if len(orders_to_return) > N:
+                    orders_to_return.pop(0)
         else:
+            if cv:
+                return []
             orders_to_return = all_machine_orders[index+1:index+N]
 
         # Get all the runs for those orders on this machine in a single query.
@@ -1271,13 +1288,13 @@ test %r is misnamed for reporting under schema %r""" % (
 
         return runs
 
-    def get_previous_runs_on_machine(self, run, N):
-        return self.get_adjacent_runs_on_machine(run, N, direction = -1)
+    def get_previous_runs_on_machine(self, run, N, cv=False):
+        return self.get_adjacent_runs_on_machine(run, N, direction = -1, cv=cv)
 
-    def get_next_runs_on_machine(self, run, N):
-        return self.get_adjacent_runs_on_machine(run, N, direction = 1)
+    def get_next_runs_on_machine(self, run, N, cv=False):
+        return self.get_adjacent_runs_on_machine(run, N, direction = 1, cv=cv)
 
-    def get_parent_run(self, run):
-        parent_commit = self.query(self.Order).join(self.Run).filter(self.Run.id == run.id).first().parent_commit
-        parent_run = self.query(self.Run).join(self.Order).filter(self.Order.git_sha == parent_commit).first()
-        return parent_run
+    def get_parent_order(self, run):
+        parent_commit = run.order.parent_commit
+        parent_order = self.query(self.Order).filter(self.Order.git_sha == parent_commit).first()
+        return parent_order

@@ -11,8 +11,7 @@ def emailReport(result, db, run, baseurl, email_config, to, was_added=True,
                 will_commit=True, cv=False):
     import email.mime.multipart
     import email.mime.text
-    if cv:
-        return
+
     subject, report, html_report = getReport(result, db, run, baseurl,
                                              was_added, will_commit, cv=cv)
 

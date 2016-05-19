@@ -29,7 +29,6 @@ def generate_run_report(run, baseurl, only_html_body=False,
 
     machine = run.machine
     machine_parameters = machine.parameters
-    
 
     if baseline is None:
         # If a baseline has not been given, look up the run closest to
@@ -41,13 +40,11 @@ def generate_run_report(run, baseurl, only_html_body=False,
     if baseline is compare_to:
         baseline = None
 
-
-
     # Gather the runs to use for statistical data.
     comparison_start_run = compare_to or run
 
     comparison_window = list(ts.get_previous_runs_on_machine(
-            comparison_start_run, num_comparison_runs))
+            comparison_start_run, num_comparison_runs, cv=cv))
 
     if baseline:
         baseline_window = list(ts.get_previous_runs_on_machine(
@@ -62,15 +59,21 @@ def generate_run_report(run, baseurl, only_html_body=False,
 
     # Create the run info analysis object.
     runs_to_load = set(r.id for r in comparison_window)
+    cv_runs_to_load = set()
     for r in baseline_window:
         runs_to_load.add(r.id)
-    runs_to_load.add(run.id)
+
+    if cv:
+        cv_runs_to_load.add(run.id)
+    else:
+        runs_to_load.add(run.id)
+
     if compare_to:
         runs_to_load.add(compare_to.id)
     if baseline:
         runs_to_load.add(baseline.id)
     sri = lnt.server.reporting.analysis.RunInfo(
-        ts, runs_to_load, aggregation_fn, confidence_lv)
+        ts, runs_to_load, aggregation_fn, confidence_lv, cv=cv_runs_to_load)
 
     # Get the test names, metric fields and total test counts.
     test_names = ts.query(ts.Test.name, ts.Test.id).\
@@ -82,16 +85,19 @@ def generate_run_report(run, baseurl, only_html_body=False,
 
     # Gather the run-over-run changes to report, organized by field and then
     # collated by change type.
+    print 'run', run
+    print 'compare_to', compare_to
     run_to_run_info, test_results = _get_changes_by_type(
         ts, run, compare_to, metric_fields, test_names, num_comparison_runs,
-        sri)
+        sri, cv=cv)
 
     # If we have a baseline, gather the run-over-baseline results and
     # changes.
     if baseline:
+        print 'baseline', baseline
         run_to_baseline_info, baselined_results = _get_changes_by_type(
             ts, run, baseline, metric_fields, test_names, num_comparison_runs,
-            sri)
+            sri, cv=cv)
     else:
         run_to_baseline_info = baselined_results = None
 
@@ -241,7 +247,7 @@ def generate_run_report(run, baseurl, only_html_body=False,
 
 
 def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
-                         num_comparison_runs, sri):
+                         num_comparison_runs, sri, cv=False):
     comparison_results = {}
     results_by_type = []
     for field in metric_fields:
@@ -256,7 +262,8 @@ def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
         for name, test_id in test_names:
             cr = sri.get_run_comparison_result(
                 run_a, run_b, test_id, field,
-                ts.Sample.get_hash_of_binary_field())
+                ts.Sample.get_hash_of_binary_field(), cv=cv)
+            print repr(cr)
             comparison_results[(name, field)] = cr
             test_status = cr.get_test_status()
             perf_status = cr.get_value_status()

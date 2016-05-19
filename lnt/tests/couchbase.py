@@ -191,7 +191,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
 
         if result is None:
             print ("Results were not obtained from submission.")
-
+            exit(1)
         return result
 
 

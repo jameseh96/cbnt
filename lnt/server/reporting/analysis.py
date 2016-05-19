@@ -194,7 +194,7 @@ class ComparisonResult:
 
         # Always ignore percentage changes below 1%, for now, we just don't have
         # enough time to investigate that level of stuff.
-        if ignore_small and abs(self.pct_delta) < .1:
+        if ignore_small and abs(self.pct_delta) < .01:
             return UNCHANGED_PASS
 
         # Always ignore changes with small deltas. There is no mathematical
@@ -248,7 +248,7 @@ class ComparisonResult:
 class RunInfo(object):
     def __init__(self, testsuite, runs_to_load,
                  aggregation_fn=stats.safe_min, confidence_lv=.05,
-                 only_tests=None):
+                 only_tests=None, cv=[]):
         """Get all the samples needed to build a CR.
         runs_to_load are the run IDs of the runs to get the samples from.
         if only_tests is passed, only samples form those test IDs are fetched.
@@ -258,10 +258,13 @@ class RunInfo(object):
         self.confidence_lv = confidence_lv
 
         self.sample_map = util.multidict()
+        self.cv_sample_map = util.multidict()
         self.profile_map = dict()
         self.loaded_run_ids = set()
+        self.loaded_cv_run_ids = set()
 
         self._load_samples_for_runs(runs_to_load, only_tests)
+        self._load_cv_samples_for_runs(cv, only_tests)
 
     @property
     def test_ids(self):
@@ -286,13 +289,13 @@ class RunInfo(object):
         return runs, compare_runs
 
     def get_run_comparison_result(self, run, compare_to, test_id, field,
-                                  hash_of_binary_field):
+                                  hash_of_binary_field, cv=False):
         if compare_to is not None:
             compare_to = [compare_to]
         else:
             compare_to = []
         return self.get_comparison_result([run], compare_to, test_id, field,
-                                          hash_of_binary_field)
+                                          hash_of_binary_field, cv=cv)
 
     def get_samples(self, runs, test_id):
         all_samples = []
@@ -302,14 +305,26 @@ class RunInfo(object):
                 all_samples.extend(samples)
         return all_samples
 
+    def get_cv_samples(self, runs, test_id):
+        all_samples = []
+        for run in runs:
+            samples = self.cv_sample_map.get((run.id, test_id))
+            if samples is not None:
+                all_samples.extend(samples)
+        return all_samples
+
     def get_comparison_result(self, runs, compare_runs, test_id, field,
-                              hash_of_binary_field):
+                              hash_of_binary_field, cv=False):
         # Get the field which indicates the requested field's status.
         status_field = field.status_field
 
         # Load the sample data for the current and previous runs and the
         # comparison window.
-        run_samples = self.get_samples(runs, test_id)
+        if cv:
+            run_samples = self.get_cv_samples(runs, test_id)
+        else:
+            run_samples = self.get_samples(runs, test_id)
+
         prev_samples = self.get_samples(compare_runs, test_id)
 
         cur_profile = prev_profile = None
@@ -397,30 +412,60 @@ class RunInfo(object):
                                 bigger_is_better=field.bigger_is_better)
 
     def _load_samples_for_runs(self, run_ids, only_tests):
-        # Find the set of new runs to load.
+        # Find the set of new runs to load
         to_load = set(run_ids) - self.loaded_run_ids
-        if not to_load:
-            return
 
-        # Batch load all of the samples for the needed runs.
-        #
-        # We speed things up considerably by loading the column data directly
-        # here instead of requiring SA to materialize Sample objects.
-        columns = [self.testsuite.Sample.run_id,
-                   self.testsuite.Sample.test_id,
-                   self.testsuite.Sample.profile_id]
-        columns.extend(f.column for f in self.testsuite.sample_fields)
-        q = self.testsuite.query(*columns)
-        if only_tests:
-            q = q.filter(self.testsuite.Sample.test_id.in_(only_tests))
-        q = q.filter(self.testsuite.Sample.run_id.in_(to_load))
-        for data in q:
-            run_id = data[0]
-            test_id = data[1]
-            profile_id = data[2]
-            sample_values = data[3:]
-            self.sample_map[(run_id, test_id)] = sample_values
-            if profile_id is not None:
-                self.profile_map[(run_id, test_id)] = profile_id
+        if to_load:
+            # Batch load all of the samples for the needed runs.
+            #
+            # We speed things up considerably by loading the column data directly
+            # here instead of requiring SA to materialize Sample objects.
+            columns = [self.testsuite.Sample.run_id,
+                       self.testsuite.Sample.test_id,
+                       self.testsuite.Sample.profile_id]
+            columns.extend(f.column for f in self.testsuite.sample_fields)
 
-        self.loaded_run_ids |= to_load
+            q = self.testsuite.query(*columns)
+            if only_tests:
+                q = q.filter(self.testsuite.Sample.test_id.in_(only_tests))
+            q = q.filter(self.testsuite.Sample.run_id.in_(to_load))
+            for data in q:
+                run_id = data[0]
+                test_id = data[1]
+                profile_id = data[2]
+                sample_values = data[3:]
+                self.sample_map[(run_id, test_id)] = sample_values
+                if profile_id is not None:
+                    self.profile_map[(run_id, test_id)] = profile_id
+
+            self.loaded_run_ids |= to_load
+
+    def _load_cv_samples_for_runs(self, run_ids, only_tests):
+        # Find the set of new runs to load
+
+        to_load = set(run_ids) - self.loaded_cv_run_ids
+
+        if to_load:
+            # Batch load all of the samples for the needed runs.
+            #
+            # We speed things up considerably by loading the column data directly
+            # here instead of requiring SA to materialize Sample objects.
+            columns = [self.testsuite.CVSample.run_id,
+                       self.testsuite.CVSample.test_id,
+                       self.testsuite.CVSample.profile_id]
+            columns.extend(f.column for f in self.testsuite.cv_sample_fields)
+
+            q = self.testsuite.query(*columns)
+            if only_tests:
+                q = q.filter(self.testsuite.CVSample.test_id.in_(only_tests))
+            q = q.filter(self.testsuite.CVSample.run_id.in_(to_load))
+            for data in q:
+                run_id = data[0]
+                test_id = data[1]
+                profile_id = data[2]
+                sample_values = data[3:]
+                self.cv_sample_map[(run_id, test_id)] = sample_values
+                if profile_id is not None:
+                    self.profile_map[(run_id, test_id)] = profile_id
+
+            self.loaded_cv_run_ids |= to_load

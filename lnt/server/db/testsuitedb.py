@@ -401,9 +401,10 @@ class TestSuiteDB(object):
 
             id = Column("ID", Integer, primary_key=True)
             name = Column("Name", String(256), unique=True, index=True)
-
+            whitelist = Column("Whitelist", Integer)
             def __init__(self, name):
                 self.name = name
+                self.whitelist = 0
 
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,

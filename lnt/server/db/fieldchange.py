@@ -133,7 +133,7 @@ def regenerate_fieldchanges_for_run(ts, run_id):
                 f.new_value = result.current
                 f.run = run
     ts.commit()
-    rules.post_submission_hooks(ts, regressions)
+    rules.post_submission_hooks(ts, run_id)
 
 
 def is_overlaping(fc1, fc2):

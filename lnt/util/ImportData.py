@@ -124,7 +124,7 @@ def import_and_report(config, db_name, db, file, format, commit=False,
             #  We have to have a commit before we run, so subprocesses can
             #  see the submitted data.
             ts = db.testsuite.get(ts_name)
-            if not cv:
+            if not cv and result['added_runs'] > 0:
                 async_ops.async_fieldchange_calc(db_name, ts, run)
 
     else:

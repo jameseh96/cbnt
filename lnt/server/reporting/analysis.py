@@ -16,9 +16,9 @@ IMPROVED = 'IMPROVED'
 UNCHANGED_PASS = 'UNCHANGED_PASS'
 UNCHANGED_FAIL = 'UNCHANGED_FAIL'
 
-# The smallest measureable change we can detect in seconds.
-MIN_VALUE_PRECISION = 0.0001
-
+# The smallest measureable change we can detect.
+MIN_VALUE_PRECISION = 0.001
+MIN_REGRESSION_PCT = 0.1
 
 def absmin_diff(current, prevs):
     """Min of differences between current sample and all previous samples.
@@ -192,9 +192,9 @@ class ComparisonResult:
         elif self.prev_failed:
             return UNCHANGED_PASS 
 
-        # Always ignore percentage changes below 1%, for now, we just don't have
+        # Always ignore percentage changes below 10%, for now, we just don't have
         # enough time to investigate that level of stuff.
-        if ignore_small and abs(self.pct_delta) < .01:
+        if ignore_small and abs(self.pct_delta) < MIN_REGRESSION_PCT:
             return UNCHANGED_PASS
 
         # Always ignore changes with small deltas. There is no mathematical

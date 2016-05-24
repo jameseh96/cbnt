@@ -85,8 +85,6 @@ def generate_run_report(run, baseurl, only_html_body=False,
 
     # Gather the run-over-run changes to report, organized by field and then
     # collated by change type.
-    print 'run', run
-    print 'compare_to', compare_to
     run_to_run_info, test_results = _get_changes_by_type(
         ts, run, compare_to, metric_fields, test_names, num_comparison_runs,
         sri, cv=cv)
@@ -94,7 +92,6 @@ def generate_run_report(run, baseurl, only_html_body=False,
     # If we have a baseline, gather the run-over-baseline results and
     # changes.
     if baseline:
-        print 'baseline', baseline
         run_to_baseline_info, baselined_results = _get_changes_by_type(
             ts, run, baseline, metric_fields, test_names, num_comparison_runs,
             sri, cv=cv)

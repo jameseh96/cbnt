@@ -1261,7 +1261,7 @@ test %r is misnamed for reporting under schema %r""" % (
             if cv:
                 if parent_order:
                     orders_to_return.append(parent_order)
-                else:
+                elif all_machine_orders:
                     orders_to_return.append(all_machine_orders[-1])
                 if len(orders_to_return) > N:
                     orders_to_return.pop(0)

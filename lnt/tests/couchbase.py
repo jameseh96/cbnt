@@ -91,7 +91,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         return report
 
     def _parse_args(self, args):
-        parser = argparse.ArgumentParser(description='lol')
+        parser = argparse.ArgumentParser(description='Couchbase-based test suite')
         parser.add_argument('config', help='location of the config.yaml file '
                             'for this test run')
         parser.add_argument('type', choices=['master', 'cv'], help='type of result entry')

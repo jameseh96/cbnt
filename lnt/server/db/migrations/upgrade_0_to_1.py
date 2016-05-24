@@ -374,7 +374,6 @@ def get_base_for_testsuite(test_suite):
         __tablename__ = db_key_name + '_Test'
         id = Column("ID", Integer, primary_key=True)
         name = Column("Name", String(256), unique=True, index=True)
-        whitelist = Column("Whitelist", Integer)
 
     class Sample(Base):
         __tablename__ = db_key_name + '_Sample'

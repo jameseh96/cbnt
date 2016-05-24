@@ -7,7 +7,9 @@ import lnt.server.reporting.analysis
 import lnt.server.ui.app
 import lnt.util.stats
 
-WHITELIST_THRESHOLD = 10
+STABILITY_THRESHOLD = 10
+
+
 def generate_run_report(run, baseurl, only_html_body=False,
                         num_comparison_runs=0, result=None,
                         compare_to=None, baseline=None,
@@ -259,9 +261,7 @@ def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
         existing_failures = []
         unchanged_tests = []
         for name, test_id in test_names:
-            whitelist = ts.query(ts.Test).filter(
-                ts.Test.id == test_id).one().whitelist
-            stable_test = whitelist > 10
+            stable_test = ts.is_test_stable(run_a, test_id, STABILITY_THRESHOLD, cv=cv)
             cr = sri.get_run_comparison_result(
                 run_a, run_b, test_id, field,
                 ts.Sample.get_hash_of_binary_field(), cv=cv, stable_test=stable_test)

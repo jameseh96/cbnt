@@ -145,7 +145,8 @@ class ComparisonResult:
 
     def is_result_performance_change(self):
         """Check if we think there was a performance change."""
-        if self.get_value_status() in (REGRESSED, IMPROVED):
+        if self.get_value_status() in (REGRESSED, IMPROVED, UNSTABLE_IMPROVED,
+                                       UNSTABLE_REGRESSED):
             return True
         return False
 
@@ -304,13 +305,13 @@ class RunInfo(object):
         return runs, compare_runs
 
     def get_run_comparison_result(self, run, compare_to, test_id, field,
-                                  hash_of_binary_field, cv=False):
+                                  hash_of_binary_field, cv=False, stable_test=True):
         if compare_to is not None:
             compare_to = [compare_to]
         else:
             compare_to = []
         return self.get_comparison_result([run], compare_to, test_id, field,
-                                          hash_of_binary_field, cv=cv)
+                                          hash_of_binary_field, cv=cv, stable_test=stable_test)
 
     def get_samples(self, runs, test_id):
         all_samples = []
@@ -329,7 +330,7 @@ class RunInfo(object):
         return all_samples
 
     def get_comparison_result(self, runs, compare_runs, test_id, field,
-                              hash_of_binary_field, cv=False):
+                              hash_of_binary_field, cv=False, stable_test=True):
         # Get the field which indicates the requested field's status.
         status_field = field.status_field
 
@@ -395,7 +396,8 @@ class RunInfo(object):
                              prev_values, cur_hash, prev_hash,
                              cur_profile, prev_profile,
                              self.confidence_lv,
-                             bigger_is_better=field.bigger_is_better)
+                             bigger_is_better=field.bigger_is_better,
+                             stable_test=stable_test)
         return r
 
     def get_geomean_comparison_result(self, run, compare_to, field, tests):

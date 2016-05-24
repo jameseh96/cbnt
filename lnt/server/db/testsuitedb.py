@@ -401,10 +401,9 @@ class TestSuiteDB(object):
 
             id = Column("ID", Integer, primary_key=True)
             name = Column("Name", String(256), unique=True, index=True)
-            whitelist = Column("Whitelist", Integer)
+
             def __init__(self, name):
                 self.name = name
-                self.whitelist = 0
 
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,
@@ -1299,3 +1298,39 @@ test %r is misnamed for reporting under schema %r""" % (
         parent_commit = run.order.parent_commit
         parent_order = self.query(self.Order).filter(self.Order.git_sha == parent_commit).first()
         return parent_order
+
+    def is_test_stable(self, run, test_id, stability_threshold, cv=False):
+
+        field_changes_for_test = self.query(self.FieldChange)\
+            .filter(self.FieldChange.test_id == test_id).all()
+
+        # Similarly to the adjacent runs method, get all orders for
+        # a given test and sort them
+        orders_for_test = self.query(self.Order).join(self.Run)\
+            .join(self.Sample).filter(self.Sample.test_id == test_id)\
+            .distinct().all()
+        orders_for_test.sort()
+
+        if cv:
+            parent_order = self.get_parent_order(run)
+            if parent_order:
+                run_index = orders_for_test.index(parent_order)
+            else:
+                run_index = max(0, len(orders_for_test) - 1)
+        else:
+            run_index = orders_for_test.index(run.order)
+
+        # We only care about orders within the threshold
+        orders_within_threshold = orders_for_test[
+            max(0, run_index - stability_threshold): run_index+1]
+
+        # If we have less orders with results for that test than
+        # the threshold then the test cannot be stable
+        if len(orders_within_threshold) < stability_threshold:
+            return False
+
+        order_ids = [order.id for order in orders_within_threshold]
+        return not any(field_change.start_order_id in order_ids or
+                       field_change.end_order_id in order_ids
+                       for field_change in field_changes_for_test)
+

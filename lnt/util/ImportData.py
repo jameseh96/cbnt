@@ -228,10 +228,10 @@ def print_report_result(result, out, err, verbose = True):
             elif perf_status == lnt.server.reporting.analysis.IMPROVED:
                 result_string = 'IMPROVED'
                 result_info = 'Performance improved of stable test.'
-            elif perf_status == lnt.server.reporting.analysis.REGRESSED:
+            elif perf_status == lnt.server.reporting.analysis.UNSTABLE_REGRESSED:
                 result_string = 'UNSTABLE_REGRESSED'
                 result_info = 'Performance regressed of unstable test.'
-            elif perf_status == lnt.server.reporting.analysis.IMPROVED:
+            elif perf_status == lnt.server.reporting.analysis.UNSTABLE_IMPROVED:
                 result_string = 'UNSTABLE_IMPROVED'
                 result_info = 'Performance improved of unstable test.'
             else:

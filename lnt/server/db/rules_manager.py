@@ -66,4 +66,7 @@ def register_hooks():
 def post_submission_hooks(ts, run_id):
     """Run all the post submission hooks on the submitted run."""
     for func in HOOKS['post_submission_hook']:
-        func(ts, run_id)
+        try:
+            func(ts, run_id)
+        except Exception:
+            continue

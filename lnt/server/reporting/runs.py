@@ -7,7 +7,7 @@ import lnt.server.reporting.analysis
 import lnt.server.ui.app
 import lnt.util.stats
 
-
+WHITELIST_THRESHOLD = 10
 def generate_run_report(run, baseurl, only_html_body=False,
                         num_comparison_runs=0, result=None,
                         compare_to=None, baseline=None,
@@ -252,14 +252,19 @@ def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
         new_passes = []
         perf_regressions = []
         perf_improvements = []
+        unstable_perf_regressions = []
+        unstable_perf_improvements = []
         removed_tests = []
         added_tests = []
         existing_failures = []
         unchanged_tests = []
         for name, test_id in test_names:
+            whitelist = ts.query(ts.Test).filter(
+                ts.Test.id == test_id).one().whitelist
+            stable_test = whitelist > 10
             cr = sri.get_run_comparison_result(
                 run_a, run_b, test_id, field,
-                ts.Sample.get_hash_of_binary_field(), cv=cv)
+                ts.Sample.get_hash_of_binary_field(), cv=cv, stable_test=stable_test)
             print repr(cr)
             comparison_results[(name, field)] = cr
             test_status = cr.get_test_status()
@@ -278,6 +283,10 @@ def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
                 bucket = perf_regressions
             elif perf_status == lnt.server.reporting.analysis.IMPROVED:
                 bucket = perf_improvements
+            elif perf_status == lnt.server.reporting.analysis.UNSTABLE_REGRESSED:
+                bucket = unstable_perf_regressions
+            elif perf_status == lnt.server.reporting.analysis.UNSTABLE_IMPROVED:
+                bucket = unstable_perf_improvements
             else:
                 bucket = unchanged_tests
 
@@ -286,8 +295,11 @@ def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
         results_by_type.append(
             (field, (('New Failures', new_failures, False),
                      ('New Passes', new_passes, False),
-                     ('Performance Regressions', perf_regressions, True),
-                     ('Performance Improvements', perf_improvements, True),
+                     ('Stable Performance Regressions', perf_regressions, True),
+                     ('Stable Performance Improvements', perf_improvements, True),
+                     ('Unstable Performance Regressions', unstable_perf_regressions, True),
+                     ('Unstable Performance Improvements',
+                      unstable_perf_improvements, True),
                      ('Removed Tests', removed_tests, False),
                      ('Added Tests', added_tests, False),
                      ('Existing Failures', existing_failures, False),

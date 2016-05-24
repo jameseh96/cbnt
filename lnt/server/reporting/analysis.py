@@ -15,6 +15,8 @@ REGRESSED = 'REGRESSED'
 IMPROVED = 'IMPROVED'
 UNCHANGED_PASS = 'UNCHANGED_PASS'
 UNCHANGED_FAIL = 'UNCHANGED_FAIL'
+UNSTABLE_REGRESSED = 'UNSTABLE_REGRESSED'
+UNSTABLE_IMPROVED = 'UNSTABLE_IMPROVED'
 
 # The smallest measureable change we can detect.
 MIN_VALUE_PRECISION = 0.001
@@ -61,7 +63,7 @@ class ComparisonResult:
     def __init__(self, aggregation_fn,
                  cur_failed, prev_failed, samples, prev_samples,
                  cur_hash, prev_hash, cur_profile=None, prev_profile=None,
-                 confidence_lv=0.05, bigger_is_better=False):
+                 confidence_lv=0.05, bigger_is_better=False, stable_test=True):
         self.aggregation_fn = aggregation_fn
 
         # Special case: if we're using the minimum to aggregate, swap it for max
@@ -80,7 +82,6 @@ class ComparisonResult:
             self.current = None
 
         self.previous = None
-
         # Compute the comparison status for the test value.
         self.delta = 0
         self.pct_delta = 0.0
@@ -111,6 +112,7 @@ class ComparisonResult:
 
         self.confidence_lv = confidence_lv
         self.bigger_is_better = bigger_is_better
+        self.stable_test = stable_test
 
     @property
     def stddev_mean(self):
@@ -154,7 +156,8 @@ class ComparisonResult:
         failure, a test status change or a performance change."""
         if self.get_test_status() != UNCHANGED_PASS:
             return True
-        if self.get_value_status() in (REGRESSED, IMPROVED):
+        if self.get_value_status() in (REGRESSED, IMPROVED, UNSTABLE_IMPROVED,
+                                       UNSTABLE_REGRESSED):
             return True
         return False
 
@@ -227,9 +230,15 @@ class ComparisonResult:
             # If the delta is significant, return
             if is_significant:
                 if self.delta < 0:
-                    return REGRESSED if self.bigger_is_better else IMPROVED
+                    if self.stable_test:
+                        return REGRESSED if self.bigger_is_better else IMPROVED
+                    else:
+                        return UNSTABLE_REGRESSED if self.bigger_is_better else UNSTABLE_IMPROVED
                 else:
-                    return IMPROVED if self.bigger_is_better else REGRESSED
+                    if self.stable_test:
+                        return IMPROVED if self.bigger_is_better else REGRESSED
+                    else:
+                        return UNSTABLE_IMPROVED if self.bigger_is_better else UNSTABLE_REGRESSED
             else:
                 return UNCHANGED_PASS
 
@@ -238,9 +247,15 @@ class ComparisonResult:
         # accurately.
         if not ignore_small or abs(self.pct_delta) >= .002:
             if self.pct_delta < 0:
-                return REGRESSED if self.bigger_is_better else IMPROVED
+                if self.stable_test:
+                    return REGRESSED if self.bigger_is_better else IMPROVED
+                else:
+                    return UNSTABLE_REGRESSED if self.bigger_is_better else UNSTABLE_IMPROVED
             else:
-                return IMPROVED if self.bigger_is_better else REGRESSED
+                if self.stable_test:
+                    return IMPROVED if self.bigger_is_better else REGRESSED
+                else:
+                    return UNSTABLE_IMPROVED if self.bigger_is_better else UNSTABLE_REGRESSED
         else:
             return UNCHANGED_PASS
 
@@ -375,7 +390,7 @@ class RunInfo(object):
         else:
             cur_hash = None
             prev_hash = None
-        r = ComparisonResult(self.aggregation_fn,
+        r =  ComparisonResult(self.aggregation_fn,
                              run_failed, prev_failed, run_values,
                              prev_values, cur_hash, prev_hash,
                              cur_profile, prev_profile,

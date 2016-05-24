@@ -5,6 +5,7 @@ gets fed into the profile/admin page.
 import json, datetime, os, subprocess, glob, time
 
 def update_profile_stats(ts, run_id):
+    return
     config = ts.v4db.config
 
     history_path = os.path.join(config.profileDir, '_profile-history.json')

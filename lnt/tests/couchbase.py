@@ -14,10 +14,12 @@ import xmltodict
 import lnt
 
 class CouchbaseTestResult(object):
-    def __init__(self, name, command, output):
+    def __init__(self, name, command, output, iterations):
         self.name = name
         self.command = command
-        self.output = output if isinstance(output, list) else [output]
+        self.iterations = iterations
+        self.output_files = output if isinstance(output, list) else [output]
+        self.output = []
         self._run_test()
         # The tests may involve some tear down time
         # Sleep the thread to eliminate this being a factor
@@ -25,18 +27,19 @@ class CouchbaseTestResult(object):
         time.sleep(5)
 
     def _run_test(self):
-        for output in self.output:
+        for iteration in xrange(self.iterations):
+            for output_file in self.output_files:
+                try:
+                    os.remove(output_file)
+                except (IOError, OSError):
+                    pass
             try:
-                os.remove(output)
-            except (IOError, OSError):
-                pass
-        try:
-            subprocess.check_call(self.command, cwd=os.getcwd(), shell=True)
-        except subprocess.CalledProcessError:
-            print 'failed to run'
-        else:
-            self.output = [xmltodict.parse(open(output, 'r'))
-                           for output in self.output]
+                subprocess.check_call(self.command, cwd=os.getcwd(), shell=True)
+            except subprocess.CalledProcessError:
+                print "failed to run command: '{}'".format(self.command)
+            else:
+                self.output.extend([xmltodict.parse(open(output_file, 'r'))
+                                    for output_file in self.output_files])
 
     def generate_report(self, tag):
         test_results = []
@@ -69,7 +72,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         parsed_args = self._parse_args(args)
         config = self._parse_config(parsed_args.config)
         self.run_order = parsed_args.run_order
-        test_results = self._run_tests(config)
+        test_results = self._run_tests(config, parsed_args.iterations)
         name = name.split()[-1]
         report = self._generate_report(name, parsed_args.type, test_results)
         parsed_args.report_path = parsed_args.report_path or 'report.json'
@@ -101,6 +104,8 @@ class CouchbaseTest(builtintest.BuiltinTest):
         parser.add_argument('--submit_url', help='url to submit report to', nargs='*')
         parser.add_argument('--commit', default=True, type=int,
                             help='commit result to db')
+        parser.add_argument('-i', '--iterations', default=1, type=int,
+                            help='number of iterations to run')
         parsed_args = parser.parse_args(args)
         return parsed_args
 
@@ -108,10 +113,10 @@ class CouchbaseTest(builtintest.BuiltinTest):
         config = yaml.load(open(config_location, 'r').read())
         return config
 
-    def _run_tests(self, config):
+    def _run_tests(self, config, iterations):
         self.start = datetime.datetime.utcnow()
         test_results = [CouchbaseTestResult(test['test'], test['command'],
-                                            test['output'])
+                                            test['output'], iterations)
                         for test in config]
         self.end = datetime.datetime.utcnow()
         return test_results

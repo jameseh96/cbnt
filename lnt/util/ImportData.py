@@ -250,6 +250,7 @@ def print_report_result(result, out, err, verbose = True):
                 print >>out, "%s TEST '%s' %s" % ('*'*20, name, '*'*20)
                 print >>out, result_info
                 print >>out, "*" * 20
+    print >>out
 
     if 'original_run' in result:
         print >>out, ("This submission is a duplicate of run %d, "
@@ -292,3 +293,8 @@ def print_report_result(result, out, err, verbose = True):
     print >>out, "----------------"
     for kind, count in result_kinds.items():
         print >>out, kind, ":", count
+    print >>out
+
+    if result['committed'] and result['result_url']:
+        print >>out, "View results online at: {}".format(result['result_url'])
+        print >>out

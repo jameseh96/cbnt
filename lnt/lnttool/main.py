@@ -7,6 +7,7 @@ import tempfile
 import json
 from optparse import OptionParser, OptionGroup
 import contextlib
+import yaml
 
 import werkzeug.contrib.profiler
 
@@ -510,7 +511,34 @@ def action_profile(name, args):
 
     assert False
 
+
+def action_addtest(name, args):
+    parser = OptionParser("%s [options] <test_name> " % (name,))
+    parser.add_option("", "--only_harness", action="store_true",
+                      help="whether to only create the test harness (not DB)")
+    parser.add_option("", "--db_key", help="dbkey to use for this testsuite")
+    (opts, args) = parser.parse_args(args)
+    existing_tests = yaml.load(
+        open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'r').read())
+    existing_test_names = {test['name'] for test in existing_tests}
+    test_name = args[0]
+    if opts.only_harness:
+        if test_name in existing_test_names:
+            print >> sys.stderr, ("test name '{}' already exists in the "
+                                  "harness.".format(test_name))
+            exit(1)
+        else:
+            if opts.db_key:
+                db_key = opts.db_key
+            else:
+                db_key = test_name
+
+            existing_tests.append({'name': test_name, 'db_key': db_key})
+            with open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'w') as f:
+                f.write(yaml.dump(existing_tests, default_flow_style=False))
+            print >> sys.stderr, "added test '{}' to harness".format(test_name)
 ###
+
 
 def _version_check():
     """

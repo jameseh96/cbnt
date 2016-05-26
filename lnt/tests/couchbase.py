@@ -60,7 +60,8 @@ class CouchbaseTestResult(object):
 
         return test_results
 
-    def _normalise_xml(self, output):
+    @staticmethod
+    def _normalise_xml(output):
         if not isinstance(output['testsuites']['testsuite'], list):
             output['testsuites']['testsuite'] = [
                 output['testsuites']['testsuite']]

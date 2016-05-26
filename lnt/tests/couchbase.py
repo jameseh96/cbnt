@@ -12,6 +12,9 @@ import yaml
 import xmltodict
 
 import lnt
+from lnt.testing.util.commands import note, warning, fatal
+from lnt.util import ImportData
+
 
 class CouchbaseTestResult(object):
     def __init__(self, name, command, output, iterations):
@@ -34,9 +37,10 @@ class CouchbaseTestResult(object):
                 except (IOError, OSError):
                     pass
             try:
-                subprocess.check_call(self.command, cwd=os.getcwd(), shell=True)
+                subprocess.check_call(self.command, cwd=os.getcwd(),
+                                      shell=True)
             except subprocess.CalledProcessError:
-                print "failed to run command: '{}'".format(self.command)
+                warning("failed to run command: '{}'".format(self.command))
             else:
                 self.output.extend([xmltodict.parse(open(output_file, 'r'))
                                     for output_file in self.output_files])
@@ -50,7 +54,8 @@ class CouchbaseTestResult(object):
                     full_test_name = '{}.'.format(tag) + '/'.join(
                         [test['@classname'], test['@name']]) + '.exec'
                     data_list = [str(test['@time'])]
-                    test_output = lnt.testing.TestSamples(full_test_name, data_list)
+                    test_output = lnt.testing.TestSamples(full_test_name,
+                                                          data_list)
                     test_results.append(test_output)
 
         return test_results
@@ -64,6 +69,7 @@ class CouchbaseTestResult(object):
             if not isinstance(test_suite['testcase'], list):
                 test_suite['testcase'] = [test_suite['testcase']]
 
+
 class CouchbaseTest(builtintest.BuiltinTest):
     def describe(self):
         return 'Couchbase performance test suite'
@@ -71,20 +77,22 @@ class CouchbaseTest(builtintest.BuiltinTest):
     def run_test(self, name, args):
         parsed_args = self._parse_args(args)
         config = self._parse_config(parsed_args.config)
-        self.run_order = parsed_args.run_order
         test_results = self._run_tests(config, parsed_args.iterations)
         name = name.split()[-1]
-        report = self._generate_report(name, parsed_args.type, test_results)
+        report = self._generate_report(name, parsed_args.result_type,
+                                       parsed_args.run_order, test_results)
         parsed_args.report_path = parsed_args.report_path or 'report.json'
         lnt_report_file = open(parsed_args.report_path, 'w')
         print >> lnt_report_file, report.render()
         lnt_report_file.close()
-        self.submit_helper(parsed_args)
-        exit(0)
+        server_report = self.submit_helper(parsed_args)
+        ImportData.print_report_result(
+            server_report, sys.stdout, sys.stderr, parsed_args.verbose)
+        return server_report
 
-    def _generate_report(self, tag, type, test_results):
-        machine = lnt.testing.Machine('test-machine', {})
-        run_info = self._generate_run_info(tag, type)
+    def _generate_report(self, tag, result_type, run_order, test_results):
+        machine = self._generate_machine()
+        run_info = self._generate_run_info(tag, result_type, run_order)
         run = lnt.testing.Run(self.start, self.end, info=run_info)
         test_outputs = []
         for test_result in test_results:
@@ -93,15 +101,21 @@ class CouchbaseTest(builtintest.BuiltinTest):
         report = lnt.testing.Report(machine, run, test_outputs)
         return report
 
-    def _parse_args(self, args):
-        parser = argparse.ArgumentParser(description='Couchbase-based test suite')
+    @staticmethod
+    def _parse_args(args):
+        parser = argparse.ArgumentParser(
+            description='Couchbase-based test suite')
         parser.add_argument('config', help='location of the config.yaml file '
                             'for this test run')
-        parser.add_argument('type', choices=['master', 'cv'], help='type of result entry')
+        parser.add_argument('result_type', choices=['master', 'cv'],
+                            help='type of result entry')
         parser.add_argument('--run_order', help='run order of this test run')
-        parser.add_argument('-v', '--verbose', action='store_true', help='show verbose test results')
-        parser.add_argument('--report_path', help='path to save report file to')
-        parser.add_argument('--submit_url', help='url to submit report to', nargs='*')
+        parser.add_argument('-v', '--verbose', action='store_true',
+                            help='show verbose test results')
+        parser.add_argument('--report_path',
+                            help='path to save report file to')
+        parser.add_argument('--submit_url', help='url to submit report to',
+                            nargs='*')
         parser.add_argument('--commit', default=True, type=int,
                             help='commit result to db')
         parser.add_argument('-i', '--iterations', default=1, type=int,
@@ -109,7 +123,8 @@ class CouchbaseTest(builtintest.BuiltinTest):
         parsed_args = parser.parse_args(args)
         return parsed_args
 
-    def _parse_config(self, config_location):
+    @staticmethod
+    def _parse_config(config_location):
         config = yaml.load(open(config_location, 'r').read())
         return config
 
@@ -121,47 +136,71 @@ class CouchbaseTest(builtintest.BuiltinTest):
         self.end = datetime.datetime.utcnow()
         return test_results
 
-    def _generate_run_info(self, tag, type):
+    def _generate_machine(self):
+        #TODO: Make machine generation smarter
+        return lnt.testing.Machine('test-machine', {})
+
+    def _generate_run_info(self, tag, result_type, run_order):
         env_vars = ['BUILD_NUMBER',
                     'GERRIT_CHANGE_COMMIT_MESSAGE',
                     'GERRIT_CHANGE_OWNER_NAME',
                     'GERRIT_CHANGE_URL',
                     'BUILD_URL']
 
-        run_info = {env_var: os.getenv(env_var, '') for env_var in env_vars
-                    if os.getenv(env_var, '')}
+        run_info = {env_var: os.getenv(env_var) for env_var in env_vars
+                    if os.getenv(env_var)}
 
-        run_info.update({'git_sha': os.getenv('GERRIT_PATCHSET_REVISION', 'test'),
-                         'run_order': str(self.run_order),
+        git_sha = os.getenv('GERRIT_PATCHSET_REVISION')
+        if not git_sha:
+            fatal("unable to determine git SHA for result, exiting.")
+
+        run_info.update({'git_sha': git_sha,
+                         'run_order': str(run_order),
                          't': str(calendar.timegm(time.gmtime())),
                          'tag': tag})
 
-        if type == 'cv':
+        if result_type == 'cv':
             run_info.update({'parent_commit': self._get_parent_commit()})
 
         return run_info
 
     def _get_parent_commit(self):
-        required_variables = {'project': os.environ.get('GERRIT_PROJECT', None),
-                              'branch': os.environ.get('GERRIT_BRANCH', None),
-                              'change_id': os.environ.get('GERRIT_CHANGE_ID', None),
-                              'commit': os.environ.get('GERRIT_PATCHSET_REVISION', None)}
+        required_variables = {
+            'project': os.environ.get('GERRIT_PROJECT'),
+            'branch': os.environ.get('GERRIT_BRANCH'),
+            'change_id': os.environ.get('GERRIT_CHANGE_ID'),
+            'commit': os.environ.get('GERRIT_PATCHSET_REVISION')}
 
         if all(required_variables.values()):
             url = ('http://review.couchbase.org/changes/{project}~{branch}~'
                    '{change_id}/revisions/{commit}/commit'
                    .format(**required_variables))
-            print 'Getting parent commit from', url
-            response = urllib2.urlopen(url).read()
+            note('getting parent commit from {}'.format(url))
+            try:
+                response = urllib2.urlopen(url).read()
+            except Exception:
+                fatal('failed to get parent commit from {}')
+                raise
+
+            # For some reason Gerrit returns a malformed json response
+            # with extra characters before the actual json begins
+            # Skip ahead to avoid this causing json deserialisation to fail
             start_index = response.index('{')
-            json_response = json.loads(response[start_index:])
+            response = response[start_index:]
+
+            try:
+                json_response = json.loads(response)
+            except Exception:
+                fatal('failed to decode Gerrit json response: {}'
+                      .format(response))
+                raise
+
             parent_commit = json_response['parents'][0]['commit']
             return parent_commit
 
         else:
-            print ('Unable to find required gerrit environment variables, '
-                   'exiting')
-            exit(1)
+            fatal('unable to find required Gerrit environment variables, '
+                  'exiting')
 
     def submit_helper(self, parsed_args):
         """Submit the report to the server.  If no server
@@ -170,18 +209,16 @@ class CouchbaseTest(builtintest.BuiltinTest):
 
         result = None
         if parsed_args.submit_url:
-            from lnt.util import ServerUtil, ImportData
+            from lnt.util import ServerUtil
             for server in parsed_args.submit_url:
                 self.log("submitting result to %r" % (server,))
                 try:
-                    result = ServerUtil.submitFile(server, parsed_args.report_path,
-                                                   parsed_args.commit, parsed_args.verbose)
+                    result = ServerUtil.submitFile(
+                        server, parsed_args.report_path, parsed_args.commit,
+                        parsed_args.verbose)
                 except (urllib2.HTTPError, urllib2.URLError) as e:
-                    print ("submitting to {} failed with {}".format(server,
+                    warning("submitting to {} failed with {}".format(server,
                                                                      e))
-                else:
-                    ImportData.print_report_result(
-                        result, sys.stdout, sys.stderr, parsed_args.verbose)
         else:
             # Simulate a submission to retrieve the results report.
             # Construct a temporary database and import the result.
@@ -195,8 +232,8 @@ class CouchbaseTest(builtintest.BuiltinTest):
                 None, None, db, parsed_args.report_path, 'json', True)
 
         if result is None:
-            print ("Results were not obtained from submission.")
-            exit(1)
+            fatal("results were not obtained from submission.")
+
         return result
 
 

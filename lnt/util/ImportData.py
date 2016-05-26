@@ -294,7 +294,3 @@ def print_report_result(result, out, err, verbose = True):
     for kind, count in result_kinds.items():
         print >>out, kind, ":", count
     print >>out
-
-    if result['committed'] and result['result_url']:
-        print >>out, "View results online at: {}".format(result['result_url'])
-        print >>out

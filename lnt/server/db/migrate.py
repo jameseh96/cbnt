@@ -10,6 +10,7 @@ Define facilities for automatically upgrading databases.
 import logging
 import os
 import re
+import yaml
 
 import sqlalchemy
 import sqlalchemy.ext.declarative
@@ -64,7 +65,8 @@ def _load_migrations():
         schema_migrations = {}
         for item in os.listdir(schema_migrations_path):
             # Ignore certain known non-scripts.
-            if item in ('README.txt', '__init__.py') or item.endswith('.pyc'):
+            if item in ('README.txt', '__init__.py') or item.endswith(('.pyc',
+                                                                      '.txt')):
                 continue
 
             # Ignore non-matching files.
@@ -108,6 +110,12 @@ def _load_migrations():
 
     return migrations
 
+
+def _load_cb_testsuites():
+    testsuites = yaml.load(
+        open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'r').read())
+
+
 ###
 # Auto-upgrading support.
 
@@ -119,6 +127,8 @@ def update_schema(engine, session, versions, available_migrations, schema_name):
     # Get the current schema version.
     db_version = versions.get(schema_name, None)
     current_version = schema_migrations['current_version']
+    cb_tests = yaml.load(
+        open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'r').read())
 
     # If there was no previous version, initialize the version.
     if db_version is None:
@@ -155,7 +165,7 @@ def update_schema(engine, session, versions, available_migrations, schema_name):
         # FIXME: Execute this inside a transaction?
         logger.info("applying upgrade for version %d to %d" % (
                 db_version.version, db_version.version+1))
-        upgrade_method(engine)
+        upgrade_method(engine, cb_tests)
 
         # Update the schema version.
         db_version.version += 1
@@ -165,6 +175,16 @@ def update_schema(engine, session, versions, available_migrations, schema_name):
         session.commit()
 
     return True
+
+
+def will_not_handle_error(e):
+    message = e.orig.message
+    if 'no such table' in message:
+        return False
+    if 'relation' in message and 'does not exist' in message:
+        return False
+    return True
+
 
 def update(engine):
     any_changed = False
@@ -176,14 +196,6 @@ def update(engine):
 
     # Create a session for our queries.
     session = sqlalchemy.orm.sessionmaker(engine)()
-
-    def will_not_handle_error(e):
-        message = e.orig.message
-        if 'no such table' in message:
-            return False
-        if 'relation' in message and 'does not exist' in message:
-            return False
-        return True
 
     # Load all the information from the versions tables. We just do the query
     # and handle the exception if the table hasn't been defined yet (for
@@ -218,6 +230,7 @@ def update(engine):
 
     if any_changed:
         logger.info("database auto-upgraded")
+
 
 def update_path(path):
     # If the path includes no database type, assume sqlite.    

@@ -7,6 +7,7 @@ import tempfile
 import json
 from optparse import OptionParser, OptionGroup
 import contextlib
+import pkg_resources
 import yaml
 
 import werkzeug.contrib.profiler
@@ -15,6 +16,7 @@ import StringIO
 import lnt
 import lnt.util.multitool
 import lnt.util.ImportData
+import lnt.util.couchbase
 from lnt import testing
 from lnt.testing.util.commands import note, warning, error, fatal, LOGGER_NAME
 import lnt.testing.profile.profile as profile
@@ -239,7 +241,7 @@ def action_update(name, args):
     (opts, args) = parser.parse_args(args)
     if len(args) != 1:
         parser.error("incorrect number of argments")
-
+    print args
     db_path, = args
 
     # Setup the base LNT logger.
@@ -513,30 +515,49 @@ def action_profile(name, args):
 
 
 def action_addtest(name, args):
-    parser = OptionParser("%s [options] <test_name> " % (name,))
-    parser.add_option("", "--only_harness", action="store_true",
-                      help="whether to only create the test harness (not DB)")
+    logger = logging.getLogger("lnt")
+    logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'))
+    logger.addHandler(handler)
+
+    parser = OptionParser("%s [options] <test_name> <test_file>" % (name,))
+    parser.add_option("", "--db_path",
+                      help="path to the db to add the test "
+                           "(if omitted then test is not added to a database)")
     parser.add_option("", "--db_key", help="dbkey to use for this testsuite")
     (opts, args) = parser.parse_args(args)
-    existing_tests = yaml.load(
-        open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'r').read())
-    existing_test_names = {test['name'] for test in existing_tests}
-    test_name = args[0]
-    if opts.only_harness:
-        if test_name in existing_test_names:
-            print >> sys.stderr, ("test name '{}' already exists in the "
-                                  "harness.".format(test_name))
-            exit(1)
-        else:
-            if opts.db_key:
-                db_key = opts.db_key
-            else:
-                db_key = test_name
 
-            existing_tests.append({'name': test_name, 'db_key': db_key})
-            with open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'w') as f:
-                f.write(yaml.dump(existing_tests, default_flow_style=False))
-            print >> sys.stderr, "added test '{}' to harness".format(test_name)
+    test_name = args[0]
+    test_file = args[1]
+
+    try:
+        cb_tests = lnt.util.couchbase.load_yaml_file(test_file)
+    except IOError:
+        logger.fatal("unable to parse provided yaml file, see traceback for "
+                     "more details")
+        raise
+
+    existing_test_names = {test['name'] for test in cb_tests}
+
+    if test_name in existing_test_names:
+        logger.error("test name '{}' already exists in the "
+                     "harness.".format(test_name))
+        exit(1)
+    else:
+        if opts.db_key:
+            db_key = opts.db_key
+        else:
+            db_key = test_name
+
+        cb_tests.append({'name': test_name, 'db_key': db_key})
+        with open('/Users/matt/lnt/lnt/cb_config/tests.yml', 'w') as f:
+            f.write(yaml.dump(cb_tests, default_flow_style=False))
+
+        logger.info("added test '{}' to harness".format(test_name))
+        # TODO: Add ability to add test to existing database
 ###
 
 

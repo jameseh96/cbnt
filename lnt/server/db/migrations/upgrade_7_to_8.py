@@ -109,12 +109,12 @@ def upgrade_testsuite(engine, session, name):
     
 
 
-def upgrade(engine):
+def upgrade(engine, cb_tests):
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()
     
     # Create our FieldChangeField table and commit.
     upgrade_testsuite(engine, session, 'nts')
     upgrade_testsuite(engine, session, 'compile')
-    upgrade_testsuite(engine, session, 'ep-engine')
-    upgrade_testsuite(engine, session, 'memcached')
+    for test in cb_tests:
+        upgrade_testsuite(engine, session, test['name'])

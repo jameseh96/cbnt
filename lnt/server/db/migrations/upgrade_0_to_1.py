@@ -2,6 +2,7 @@
 #
 # Version 1 is the schema state at the time when we started doing DB versioning.
 
+import sys
 import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.schema import Index
@@ -458,7 +459,8 @@ def initialize_testsuite(engine, session, name):
 
 ###
 
-def upgrade(engine):
+
+def upgrade(engine, cb_tests):
     # This upgrade script is special in that it needs to handle databases "in
     # the wild" which have contents but existed before versioning.
 
@@ -476,10 +478,10 @@ def upgrade(engine):
         initialize_nts_definition(engine, session)
     if session.query(TestSuite).filter_by(name="compile").first() is None:
         initialize_compile_definition(engine, session)
-    if session.query(TestSuite).filter_by(name="ep-engine").first() is None:
-        initialize_epengine_definition(engine, session)
-    if session.query(TestSuite).filter_by(name="memcached").first() is None:
-        initialize_memcached_definition(engine, session)
+
+    for test in cb_tests:
+        if session.query(TestSuite).filter_by(name=test['name']).first() is None:
+            initialize_couchbase_definition(engine, session, test['name'], test['db_key'])
 
     # Commit the results.
     session.commit()
@@ -487,5 +489,5 @@ def upgrade(engine):
     # Materialize the test suite tables.
     initialize_testsuite(engine, session, "nts")
     initialize_testsuite(engine, session, "compile")
-    initialize_testsuite(engine, session, "memcached")
-    initialize_testsuite(engine, session, "ep-engine")
+    for test in cb_tests:
+        initialize_testsuite(engine, session, test['name'])

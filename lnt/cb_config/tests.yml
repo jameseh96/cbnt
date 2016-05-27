@@ -1,4 +1,6 @@
-- name: memcached
-  db_key: Memcached
-- name: ep-engine
-  db_key: EP
+- db_key: Memcached
+  name: memcached
+- db_key: EP
+  name: ep-engine
+- db_key: haha157
+  name: haha157

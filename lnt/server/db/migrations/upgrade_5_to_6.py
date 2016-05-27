@@ -13,7 +13,7 @@ from sqlalchemy import *
 # change the actual schema.
 import lnt.server.db.migrations.upgrade_0_to_1 as upgrade_0_to_1
 
-def upgrade(engine):
+def upgrade(engine, _):
 
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()

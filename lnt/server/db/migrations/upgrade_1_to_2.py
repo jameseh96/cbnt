@@ -135,15 +135,15 @@ def update_testsuite(engine, session, db_key_name):
 
     session.flush()
 
-def upgrade(engine):
+def upgrade(engine, cb_tests):
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()
 
     # For each test suite...
     update_testsuite(engine, session, 'NT')
     update_testsuite(engine, session, 'Compile')
-    update_testsuite(engine, session, 'EP')
-    update_testsuite(engine, session, 'Memcached')
+    for test in cb_tests:
+        update_testsuite(engine, session, test['db_key'])
     
     # Commit the results.
     session.commit()

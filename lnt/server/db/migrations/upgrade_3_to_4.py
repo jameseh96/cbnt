@@ -8,7 +8,7 @@ import sqlalchemy
 ###
 # Upgrade TestSuite
 
-def upgrade(engine):
+def upgrade(engine, _):
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()
     

@@ -296,7 +296,7 @@ class V4RequestInfo(object):
         classes = {
             'table': 'table table-striped table-condensed table-hover'
         }
-        
+
         reports = lnt.server.reporting.runs.generate_run_report(
             self.run, baseurl=db_url_for('index', _external=True),
             only_html_body=only_html_body, result=None,
@@ -306,9 +306,106 @@ class V4RequestInfo(object):
             styles=styles, classes=classes)
         _, self.text_report, self.html_report, self.sri = reports
 
+class V4CVRequestInfo(object):
+    def __init__(self, run_id, only_html_body=True):
+        self.db = request.get_db()
+        self.ts = ts = request.get_testsuite()
+        self.run = run = ts.query(ts.CVRun).filter_by(id=run_id).first()
+        if run is None:
+            abort(404)
+
+        # Get the aggregation function to use.
+        aggregation_fn_name = request.args.get('aggregation_fn')
+        self.aggregation_fn = {'min': lnt.util.stats.safe_min,
+                               'median': lnt.util.stats.median}.get(
+            aggregation_fn_name, lnt.util.stats.safe_min)
+
+        # Get the MW confidence level.
+        try:
+            confidence_lv = float(request.args.get('MW_confidence_lv'))
+        except (TypeError, ValueError):
+            confidence_lv = .05
+        self.confidence_lv = confidence_lv
+
+        # Find the neighboring runs, by order.
+        prev_runs = list(ts.get_previous_runs_on_machine(run, N = 3, cv=True))
+        next_runs = list(ts.get_next_runs_on_machine(run, N = 3, cv=True))
+        self.neighboring_runs = next_runs[::-1] + [self.run] + prev_runs
+
+        # Select the comparison run as either the previous run, or a user
+        # specified comparison run.
+        compare_to_str = request.args.get('compare_to')
+        if compare_to_str:
+            compare_to_id = int(compare_to_str)
+            self.compare_to = ts.query(ts.Run).\
+                filter_by(id=compare_to_id).first()
+            if self.compare_to is None:
+                # FIXME: Need better way to report this error.
+                abort(404)
+
+            self.comparison_neighboring_runs = (
+                list(ts.get_next_runs_on_machine(self.compare_to, N=3))[::-1] +
+                [self.compare_to] +
+                list(ts.get_previous_runs_on_machine(self.compare_to, N=3)))
+        else:
+            if prev_runs:
+                self.compare_to = prev_runs[0]
+            else:
+                self.compare_to = None
+            self.comparison_neighboring_runs = [run for run in self.neighboring_runs if run is not self.run]
+
+        try:
+            self.num_comparison_runs = int(
+                request.args.get('num_comparison_runs'))
+        except:
+            self.num_comparison_runs = 0
+
+        # Find the baseline run, if requested.
+        baseline_str = request.args.get('baseline')
+        if baseline_str:
+            baseline_id = int(baseline_str)
+            self.baseline = ts.query(ts.Run).\
+                filter_by(id=baseline_id).first()
+            if self.baseline is None:
+                # FIXME: Need better way to report this error.
+                abort(404)
+        else:
+            self.baseline = None
+
+        # Gather the runs to use for statistical data.
+        comparison_start_run = self.compare_to or self.run
+
+        # We're going to render this on a real webpage with CSS support, so
+        # override the default styles and provide bootstrap class names for
+        # the tables.
+        styles = {
+            'body': '', 'td': '',
+            'h1': 'font-size: 14pt',
+            'table': 'width: initial; font-size: 9pt;',
+            'th': 'text-align: center;'
+        }
+        classes = {
+            'table': 'table table-striped table-condensed table-hover'
+        }
+
+        reports = lnt.server.reporting.runs.generate_run_report(
+            self.run, baseurl=db_url_for('index', _external=True),
+            only_html_body=only_html_body, result=None,
+            compare_to=self.compare_to, baseline=self.baseline,
+            num_comparison_runs=self.num_comparison_runs,
+            aggregation_fn=self.aggregation_fn, confidence_lv=confidence_lv,
+            styles=styles, classes=classes, cv=True)
+        _, self.text_report, self.html_report, self.sri = reports
+
 @v4_route("/<int:id>/report")
 def v4_report(id):
     info = V4RequestInfo(id, only_html_body=False)
+
+    return make_response(info.html_report)
+
+@v4_route("/<int:id>/report")
+def v4_cv_report(id):
+    info = V4CVRequestInfo(id, only_html_body=False)
 
     return make_response(info.html_report)
 
@@ -424,6 +521,88 @@ def v4_run(id):
     }
     return render_template(
         "v4_run.html", ts=ts, options=options,
+        metric_fields=list(ts.Sample.get_metric_fields()),
+        test_info=test_info, analysis=lnt.server.reporting.analysis,
+        test_min_value_filter=test_min_value_filter,
+        request_info=info, urls=urls
+)
+
+
+@v4_route("/cv/<int:id>")
+def v4_cv_run(id):
+    info = V4CVRequestInfo(id)
+
+    ts = info.ts
+    run = info.run
+
+    # Parse the view options.
+    options = {}
+    options['show_delta'] = bool(request.args.get('show_delta'))
+    options['show_previous'] = bool(request.args.get('show_previous'))
+    options['show_stddev'] =  bool(request.args.get('show_stddev'))
+    options['show_mad'] = bool(request.args.get('show_mad'))
+    options['show_all'] = bool(request.args.get('show_all'))
+    options['show_all_samples'] = bool(request.args.get('show_all_samples'))
+    options['show_sample_counts'] = bool(request.args.get('show_sample_counts'))
+    options['show_graphs'] = show_graphs = bool(request.args.get('show_graphs'))
+    options['show_data_table'] = bool(request.args.get('show_data_table'))
+    options['show_small_diff'] = bool(request.args.get('show_small_diff'))
+    options['hide_report_by_default'] = bool(
+        request.args.get('hide_report_by_default'))
+    options['num_comparison_runs'] = info.num_comparison_runs
+    options['test_filter'] = test_filter_str = request.args.get(
+        'test_filter', '')
+    options['MW_confidence_lv'] = info.confidence_lv
+    if test_filter_str:
+        test_filter_re = re.compile(test_filter_str)
+    else:
+        test_filter_re = None
+
+    options['test_min_value_filter'] = test_min_value_filter_str = \
+        request.args.get('test_min_value_filter', '')
+    if test_min_value_filter_str != '':
+        test_min_value_filter = float(test_min_value_filter_str)
+    else:
+        test_min_value_filter = 0.0
+
+    options['aggregation_fn'] = request.args.get('aggregation_fn', 'min')
+
+    # Get the test names.
+    test_info = ts.query(ts.Test.name, ts.Test.id).\
+        order_by(ts.Test.name).all()
+
+    # Filter the list of tests by name, if requested.
+    if test_filter_re:
+        test_info = [test
+                     for test in test_info
+                     if test_filter_re.search(test[0])]
+
+    if request.args.get('json'):
+        json_obj = dict()
+
+        sri = lnt.server.reporting.analysis.RunInfo(ts, [id], cv=[run])
+        reported_tests = ts.query(ts.Test.name, ts.Test.id).\
+            filter(ts.CVRun.id == id).\
+            filter(ts.Test.id.in_(sri.test_ids)).all()
+
+        json_obj['tests'] = {}
+        for test_name, test_id in reported_tests:
+            test = {}
+            test['name'] = test_name
+            for sample_field in ts.cv_sample_fields:
+                res = sri.get_run_comparison_result(
+                    run, None, test_id, sample_field,
+                    ts.Sample.get_hash_of_binary_field(), cv=True)
+                test[sample_field.name] = res.current
+            json_obj['tests'][test_id] = test
+
+        return flask.jsonify(**json_obj)
+
+    urls = {
+        'search': v4_url_for('v4_search')
+    }
+    return render_template(
+        "v4_cv_run.html", ts=ts, options=options,
         metric_fields=list(ts.Sample.get_metric_fields()),
         test_info=test_info, analysis=lnt.server.reporting.analysis,
         test_min_value_filter=test_min_value_filter,

@@ -222,7 +222,11 @@ def generate_run_report(run, baseurl, only_html_body=False,
     text_report_delta = time.time() - text_report_start_time
     start_time = start_time + text_report_delta
 
-    html_template = env.get_template('reporting/runs.html')
+    if cv:
+        html_template = env.get_template('reporting/cv_runs.html')
+    else:
+        html_template = env.get_template('reporting/runs.html')
+
     html_report = html_template.render(
         ts=ts,
         subject=subject,

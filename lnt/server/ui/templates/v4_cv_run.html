@@ -117,9 +117,9 @@ $('.profile-prev-only').tooltip();
   {# Show a small number of neighboring runs. #}
   {% for r in neighboring_runs %}
     <li>
-      {{ "<b>"|safe if r.id == run.id else "" }}
+      {{ "<b>"|safe if r == run else "" }}
       <a href="{{v4_url_for('v4_run', id=r.id) if not r == run else v4_url_for('v4_cv_run', id=r.id)}}"><span class="utctime">{{ r.start_time.isoformat() }}</span></a>
-      {{ "</b>"|safe if r.id == run.id else "" }}
+      {{ "</b>"|safe if r == run else "" }}
     </li>
   {% endfor %}
   </ul>

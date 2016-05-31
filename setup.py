@@ -99,7 +99,7 @@ http://llvm.org/svn/llvm-project/lnt/trunk
                       'Flask-WTF',
                       'Flask-RESTful',
                       'SQLAlchemy',
-                      'Flask'],
+                      'Flask<0.11'],
 
     ext_modules = [cPerf],
 )

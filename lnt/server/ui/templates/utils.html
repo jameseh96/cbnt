@@ -18,6 +18,10 @@
 <a href="{{v4_url_for('v4_run', id=r.id)}}">View Results</a>
 {%- endmacro %}
 
+{% macro render_cv_result(r) -%}
+<a href="{{v4_url_for('v4_cv_run', id=r.id)}}">View Results</a>
+{%- endmacro %}
+
 {% macro render_machine(m) -%}
 <a href="{{v4_url_for('v4_machine', id=m.id)}}">{{m.name}}:{{m.id}}</a>
 {%- endmacro %}

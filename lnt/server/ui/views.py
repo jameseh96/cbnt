@@ -621,6 +621,18 @@ def v4_order(id):
 
     return render_template("v4_order.html", ts=ts, order=order)
 
+@v4_route("/cv/order/<int:id>")
+def v4_cv_order(id):
+    # Get the testsuite.
+    ts = request.get_testsuite()
+
+    # Get the order.
+    order = ts.query(ts.CVOrder).filter(ts.CVOrder.id == id).first()
+    if order is None:
+        abort(404)
+
+    return render_template("v4_cv_order.html", ts=ts, order=order)
+
 @v4_route("/all_orders")
 def v4_all_orders():
     # Get the testsuite.

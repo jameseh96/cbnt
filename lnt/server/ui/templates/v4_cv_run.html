@@ -316,7 +316,7 @@ $('.profile-prev-only').tooltip();
   {{request_info.html_report|safe}}
   {{ utils.render_popup_end() }}
 
-  {% set graph_base=v4_url_for('v4_graph', highlight_run=run.id) %}
+  {% set graph_base=v4_url_for('v4_graph', highlight_run=run.id, cv=run.id) %}
   <form method="GET" action="{{ graph_base }}">
 
     {# Report one table for each primary field. #}

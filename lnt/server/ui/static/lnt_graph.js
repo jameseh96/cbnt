@@ -40,6 +40,12 @@ function get_run_url(db, ts, runID) {
     return [prefix, "db_" + db, "v4", ts, runID].join('/');
 }
 
+// Grab the URL for a cv run by id.
+function get_cv_run_url(db, ts, runID) {
+    "use strict";
+    return [prefix, "db_" + db, "v4", ts, "cv", runID].join('/');
+}
+
 // Create a new regression manually URL.
 function get_manual_regression_url(db, ts, url, runID) {
     "use strict";
@@ -116,12 +122,18 @@ function show_tooltip(x, y, item, pos, graph_data) {
         tip_body += "<b>State:</b> " + meta_data.state + "<br>";
     }
     if (meta_data.runID) {
-        tip_body += "<b>Run:</b> <a href=\"" +
-            get_run_url(db_name, test_suite_name, meta_data.runID) +
-            "\">" + meta_data.runID + "<br>";
+        if (meta_data.cv) {
+            tip_body += "<b>CV Run:</b> <a href=\"" +
+                get_cv_run_url(db_name, test_suite_name, meta_data.runID) +
+                "\">" + meta_data.runID + "<br>";
+        } else {
+            tip_body += "<b>Run:</b> <a href=\"" +
+                get_run_url(db_name, test_suite_name, meta_data.runID) +
+                "\">" + meta_data.runID + "<br>";
+        }
     }
     
-    if (meta_data.runID &&  item.series.url) {
+    if (meta_data.runID &&  item.series.url && !meta_data.cv) {
         tip_body += "<a href=\"" +
             get_manual_regression_url(db_name, test_suite_name, item.series.url, meta_data.runID) +
             "\">Mark Change.<br>";

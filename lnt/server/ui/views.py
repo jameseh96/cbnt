@@ -667,6 +667,40 @@ def v4_run_graph(id):
 
     return redirect(v4_url_for("v4_graph", **args))
 
+@v4_route("/cv/<int:id>/graph")
+def v4_cv_run_graph(id):
+    # This is an old style endpoint that treated graphs as associated with
+    # runs. Redirect to the new endpoint.
+
+    ts = request.get_testsuite()
+    run = ts.query(ts.CVRun).filter_by(id=id).first()
+    if run is None:
+        abort(404)
+
+    # Convert the old style test parameters encoding.
+    args = { 'highlight_run' : id,
+             'cv': id}
+    plot_number = 0
+    for name,value in request.args.items():
+        # If this isn't a test specification, just forward it.
+        if not name.startswith('test.'):
+            args[name] = value
+            continue
+
+        # Otherwise, rewrite from the old style of::
+        #
+        #   test.<test id>=<sample field index>
+        #
+        # into the new style of::
+        #
+        #   plot.<number>=<machine id>.<test id>.<sample field index>
+        test_id = name.split('.', 1)[1]
+        args['plot.%d' % (plot_number,)] = '%d.%s.%s' % (
+            run.machine.id, test_id, value)
+        plot_number += 1
+
+    return redirect(v4_url_for("v4_graph", **args))
+
 BaselineLegendItem = namedtuple('BaselineLegendItem', 'name id')
 LegendItem = namedtuple('LegendItem', 'machine test_name field_name color url')
 
@@ -739,6 +773,7 @@ def v4_graph():
             field = ts.sample_fields[field_index]
         except NoResultFound:
             return abort(404)
+
         graph_parameters.append((machine, test, field, field_index))
 
     # Order the plots by machine name, test name and then field.
@@ -769,7 +804,6 @@ def v4_graph():
         except NoResultFound:
             return abort(404)
         field = ts.sample_fields[field_index]
-
         mean_parameter = (machine, field)
 
     # Sanity check the arguments.
@@ -805,21 +839,53 @@ def v4_graph():
     # Create region of interest for run data region if we are performing a
     # comparison.
     revision_range = None
+
+    cv = request.args.get('cv')
+    if cv and cv.isdigit():
+        cv = int(cv)
+        cv_run = ts.query(ts.CVRun).filter(ts.CVRun.id == cv).first()
+        if cv_run:
+            parent_order = ts.get_parent_order(cv_run)
+            if parent_order:
+                max_revision = parent_order.llvm_project_revision
+            else:
+                max_revision = ts.query(
+                    sqlalchemy.func.max(ts.Order.llvm_project_revision)).scalar()
+        else:
+            max_revision = ts.query(
+                sqlalchemy.func.max(ts.Order.llvm_project_revision)).scalar()
+    else:
+        max_revision = ts.query(sqlalchemy.func.max(
+            ts.Order.llvm_project_revision)).scalar()
+
     highlight_run_id = request.args.get('highlight_run')
     if show_highlight and highlight_run_id and highlight_run_id.isdigit():
-        highlight_run = ts.query(ts.Run).filter_by(
-            id=int(highlight_run_id)).first()
-        if highlight_run is None:
-            abort(404)
+        if cv and isinstance(cv, int) and cv_run and int(highlight_run_id) == cv:
+            highlight_run = cv_run
+            if highlight_run is None:
+                abort(404)
+            prev_runs = list(
+                ts.get_previous_runs_on_machine(highlight_run, N=1, cv=True))
+            if prev_runs:
+                start_rev = prev_runs[0].order.llvm_project_revision
+                end_rev = int(max_revision) + 1
+                revision_range = {
+                    "start": convert_revision(start_rev),
+                    "end": end_rev}
+        else:
+            highlight_run = ts.query(ts.Run).filter_by(
+                id=int(highlight_run_id)).first()
+            if highlight_run is None:
+                abort(404)
 
-        # Find the neighboring runs, by order.
-        prev_runs = list(ts.get_previous_runs_on_machine(highlight_run, N = 1))
-        if prev_runs:
-            start_rev = prev_runs[0].order.llvm_project_revision
-            end_rev = highlight_run.order.llvm_project_revision
-            revision_range = {
-                "start": convert_revision(start_rev),
-                "end": convert_revision(end_rev) }
+            # Find the neighboring runs, by order.
+            prev_runs = list(ts.get_previous_runs_on_machine(highlight_run, N=1))
+            if prev_runs:
+                start_rev = prev_runs[0].order.llvm_project_revision
+                end_rev = highlight_run.order.llvm_project_revision
+                revision_range = {
+                    "start": convert_revision(start_rev),
+                    "end": convert_revision(end_rev)}
 
     # Build the graph data.
     legend = []
@@ -828,6 +894,7 @@ def v4_graph():
     overview_plots = []
     baseline_plots = []
     num_plots = len(graph_parameters)
+
     for i,(machine,test,field, field_index) in enumerate(graph_parameters):
         # Determine the base plot color.
         col = list(util.makeDarkColor(float(i) / num_plots))
@@ -844,6 +911,7 @@ def v4_graph():
             join(ts.Run).join(ts.Order).\
             filter(ts.Run.machine_id == machine.id).\
             filter(ts.Sample.test == test).\
+            filter(ts.Order.llvm_project_revision <= max_revision).\
             filter(field.column != None)
 
         # Unless all samples requested, filter out failing tests.
@@ -854,6 +922,20 @@ def v4_graph():
 
         # Aggregate by revision.
         data = util.multidict((rev, (val, date, run_id)) for val,rev,date,run_id in q).items()
+
+        # If CV result, add it to the data points
+        if cv and isinstance(cv, int) and cv_run:
+            cv_field = ts.cv_sample_fields[field_index]
+            q_cv = ts.query(cv_field.column, ts.CVRun.start_time, ts.CVRun.id). \
+                join(ts.CVRun).join(ts.CVOrder). \
+                filter(ts.CVRun.machine_id == machine.id). \
+                filter(ts.CVSample.test == test). \
+                filter(ts.CVRun.id == cv_run.id). \
+                filter(cv_field.column != None)
+
+            data.append((str(int(max_revision) + 1), [(val, date, run_id)
+                        for val, date, run_id in q_cv]))
+
         data.sort(key=lambda sample: convert_revision(sample[0]))
 
         graph_datum.append((test.name, data, col, field, url))
@@ -953,7 +1035,9 @@ def v4_graph():
             metadata["date"] = str(dates[agg_index])
             if runs:
                 metadata["runID"] = str(runs[agg_index])
-            
+            if (cv and isinstance(cv, int) and cv_run and
+                        int(max_revision)<int(point_label)):
+                metadata["cv"] = True
             if len(graph_datum) > 1:
                 # If there are more than one plot in the graph, also label the
                 # test name.

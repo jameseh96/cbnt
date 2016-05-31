@@ -11,7 +11,9 @@
   <ul class="nav nav-list bs-docs-sidenav">
     <li><a href="#fields"><i class="icon-chevron-right"></i> Fields</a></li>
     <li><a href="#parameters"><i class="icon-chevron-right"></i> Parameters</a></li>
-    <li><a href="#submissions"><i class="icon-chevron-right"></i> Submissions</a></li>
+    <li><a href="#master-submissions"><i class="icon-chevron-right"></i> Master Submissions</a></li>
+      <li><a href="#cv-submissions"><i class="icon-chevron-right"></i> Commit Validation Submissions</a></li>
+
   </ul>
 
   <h4>Relatives</h4>
@@ -60,8 +62,8 @@
   </table>
   </section>
 
-  <section id="submissions">
-  <h3>Submissions</h3>
+  <section id="master-submissions">
+  <h3>Master Submissions</h3>
   <table class="table table-striped table-hover table-condensed">
     <thead>
       <tr>
@@ -71,7 +73,7 @@
         <th>&nbsp;</th>
       </tr>
     </thead>
-    {% for order,runs in associated_runs|sort|reverse %}
+    {% for order,runs in master_runs|sort|reverse %}
     {% for run in runs %}
     <tr>
       {% if loop.first %}
@@ -80,6 +82,31 @@
       <td><span class="utctime">{{ run.start_time.isoformat() }}</span></td>
       <td>{{ run.end_time - run.start_time }}s</td>
       <td>{{ utils.render_result(run) }}</td>
+    </tr>
+    {% endfor %}
+    {% endfor %}
+  </table>
+  </section>
+    <section id="cv-submissions">
+  <h3>Commit Validation Submissions</h3>
+  <table class="table table-striped table-hover table-condensed">
+    <thead>
+      <tr>
+        <th>Run Order</th>
+        <th>Start Time</th>
+        <th>Duration</th>
+        <th>&nbsp;</th>
+      </tr>
+    </thead>
+    {% for order,runs in cv_runs|sort|reverse %}
+    {% for run in runs %}
+    <tr>
+      {% if loop.first %}
+      <td rowspan="{{ runs|length }}" style="text-align:right">local.{{ order.as_ordered_string() }}</td>
+      {% endif %}
+      <td><span class="utctime">{{ run.start_time.isoformat() }}</span></td>
+      <td>{{ run.end_time - run.start_time }}s</td>
+      <td>{{ utils.render_cv_result(run) }}</td>
     </tr>
     {% endfor %}
     {% endfor %}

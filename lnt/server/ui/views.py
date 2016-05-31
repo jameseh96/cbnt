@@ -187,31 +187,47 @@ def v4_machine(id):
     # Gather all the runs on this machine.
     ts = request.get_testsuite()
 
-    associated_runs = util.multidict(
+    master_runs = util.multidict(
         (run_order, r)
-        for r,run_order in ts.query(ts.Run, ts.Order).\
-            join(ts.Order).\
-            filter(ts.Run.machine_id == id).\
-            order_by(ts.Run.start_time.desc()))
-    associated_runs = associated_runs.items()
-    associated_runs.sort()
+        for r,run_order in ts.query(ts.Run, ts.Order).
+        join(ts.Order).
+        filter(ts.Run.machine_id == id).
+        order_by(ts.Run.start_time.desc()))
+    master_runs = master_runs.items()
+    master_runs.sort()
+
+    cv_runs = util.multidict(
+        (run_order, r)
+        for r, run_order in ts.query(ts.CVRun, ts.CVOrder). \
+        join(ts.CVOrder).
+        filter(ts.CVRun.machine_id == id).
+        order_by(ts.CVRun.start_time.desc()))
+    cv_runs = cv_runs.items()
+    cv_runs.sort()
 
     if request.args.get('json'):
         json_obj = dict()
         machine_obj = ts.query(ts.Machine).filter(ts.Machine.id == id).one()
         json_obj['name'] = machine_obj.name
         json_obj['id'] = machine_obj.id
-        json_obj['runs'] = []
-        for order in associated_runs:
+        json_obj['master_runs'] = []
+        json_obj['cv_runs'] = []
+        for order in master_runs:
             rev = order[0].llvm_project_revision
             for run in order[1]:
-                json_obj['runs'].append((run.id, rev,
+                json_obj['master_runs'].append((run.id, rev,
                                          run.start_time.isoformat(), run.end_time.isoformat()))
+        for order in cv_runs:
+            rev = order[0].llvm_project_revision
+            for run in order[1]:
+                json_obj['cv_runs'].append((run.id, rev,
+                                                run.start_time.isoformat(),
+                                                run.end_time.isoformat()))
         return flask.jsonify(**json_obj)
     try:
         return render_template("v4_machine.html",
                            testsuite_name=g.testsuite_name, id=id,
-                           associated_runs=associated_runs)
+                           master_runs=master_runs, cv_runs=cv_runs)
     except NoResultFound as e:
         abort(404)
         

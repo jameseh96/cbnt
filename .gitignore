@@ -1,6 +1,9 @@
-# Ignore everything
-*
-
-# Don't ignore files that we want
-!.gitignore
-!*.py
+*.pyc
+build/
+db/
+dist/
+atlassian-ide-plugin.xml
+.idea/
+LNT.egg-info/
+lnt.log
+lnt/.idea/

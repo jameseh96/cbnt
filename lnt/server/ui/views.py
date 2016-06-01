@@ -148,25 +148,29 @@ def v4_recent_activity():
 
     # Get the most recent runs in this tag, we just arbitrarily limit to looking
     # at the last 100 submission.
-    recent_runs = ts.query(ts.Run).\
+    recent_master_runs = ts.query(ts.Run).\
         order_by(ts.Run.start_time.desc()).limit(100)
-    recent_runs = list(recent_runs)
-
+    recent_master_runs = list(recent_master_runs)
+    recent_cv_runs = ts.query(ts.CVRun). \
+        order_by(ts.CVRun.start_time.desc()).limit(100)
+    recent_cv_runs = list(recent_cv_runs)
     # Compute the active machine list.
     active_machines = dict((run.machine.name, run)
-                           for run in recent_runs[::-1])
-
+                           for run in recent_master_runs[::-1])
     # Compute the active submission list.
     #
     # FIXME: Remove hard coded field use here.
     N = 30
-    active_submissions = [(r, r.order.llvm_project_revision)
-                          for r in recent_runs[:N]]
+    active_master_submissions = [(r, r.order.llvm_project_revision)
+                                 for r in recent_master_runs[:N]]
+    active_cv_submissions = [(r, r.order.llvm_project_revision)
+                             for r in recent_cv_runs[:N]]
 
     return render_template("v4_recent_activity.html",
                            testsuite_name=g.testsuite_name,
                            active_machines=active_machines,
-                           active_submissions=active_submissions)
+                           active_master_submissions=active_master_submissions,
+                           active_cv_submissions=active_cv_submissions)
 
 @v4_route("/machine/")
 def v4_machines():

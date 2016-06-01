@@ -10,7 +10,8 @@
 {% block sidebar %}
   <ul class="nav nav-list bs-docs-sidenav">
       <li><a href="#machines"><i class="icon-chevron-right"></i> Active Machines</a></li>
-      <li><a href="#submissions"><i class="icon-chevron-right"></i> Recent Submissions</a></li>
+      <li><a href="#master-submissions"><i class="icon-chevron-right"></i> Recent Master Submissions</a></li>
+      <li><a href="#cv-submissions"><i class="icon-chevron-right"></i> Recent Commit Validation Submissions</a></li>
   </ul>
 {% endblock %}
 
@@ -39,8 +40,8 @@
   </table>
   </section>
 
-  <section id="submissions">
-  <h3>Recent Submissions</h3>
+  <section id="master-submissions">
+  <h3>Recent Master Submissions</h3>
   <table class="table table-striped table-hover table-condensed">
     <thead>
     <tr>
@@ -53,13 +54,39 @@
     </thead>
     <tbody>
       {# Show the active submissions. #}
-      {% for r,run_order in active_submissions %}
+      {% for r,run_order in active_master_submissions %}
       <tr>
         <td><a href="{{v4_url_for('v4_order', id=r.order.id)}}">{{run_order}}</a></td>
         <td><span class="reltime" data-toggle="tooltip" title="{{r.start_time}}">{{ r.start_time.isoformat() }}</span></td>
         <td>{{ r.end_time - r.start_time }}</td>
         <td>{{ utils.render_machine(r.machine) }}</td>
         <td>{{ utils.render_result(r) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </section>
+    <section id="cv-submissions">
+  <h3>Recent Commit Validation Submissions</h3>
+  <table class="table table-striped table-hover table-condensed">
+    <thead>
+    <tr>
+      <th>Run Order</th>
+      <th>Started</th>
+      <th>Duration</th>
+      <th>Machine</th>
+      <th>Results</th>
+    </tr>
+    </thead>
+    <tbody>
+      {# Show the active submissions. #}
+      {% for r,run_order in active_cv_submissions %}
+      <tr>
+        <td><a href="{{v4_url_for('v4_cv_order', id=r.order.id)}}">{{run_order}}</a></td>
+        <td><span class="reltime" data-toggle="tooltip" title="{{r.start_time}}">{{ r.start_time.isoformat() }}</span></td>
+        <td>{{ r.end_time - r.start_time }}</td>
+        <td>{{ utils.render_machine(r.machine) }}</td>
+        <td>{{ utils.render_cv_result(r) }}</td>
       </tr>
       {% endfor %}
     </tbody>

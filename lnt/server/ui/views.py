@@ -1244,7 +1244,7 @@ def v4_graph():
 @v4_route("/global_status")
 def v4_global_status():
     from lnt.server.ui import util
-
+    abort(404)
     ts = request.get_testsuite()
     metric_fields = sorted(list(ts.Sample.get_metric_fields()),
                            key=lambda f: f.name)

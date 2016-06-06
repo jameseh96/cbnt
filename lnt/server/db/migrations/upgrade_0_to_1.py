@@ -473,9 +473,11 @@ def upgrade(engine):
     # Initialize all the test suite definitions for NTS and Compile, if they do
     # not already exist.
     if session.query(TestSuite).filter_by(name="nts").first() is None:
-        initialize_nts_definition(engine, session)
+        pass
+        # initialize_nts_definition(engine, session)
     if session.query(TestSuite).filter_by(name="compile").first() is None:
-        initialize_compile_definition(engine, session)
+        pass
+        # initialize_compile_definition(engine, session)
     if session.query(TestSuite).filter_by(name="ep-engine").first() is None:
         initialize_epengine_definition(engine, session)
     if session.query(TestSuite).filter_by(name="memcached").first() is None:
@@ -485,7 +487,7 @@ def upgrade(engine):
     session.commit()
 
     # Materialize the test suite tables.
-    initialize_testsuite(engine, session, "nts")
-    initialize_testsuite(engine, session, "compile")
+    # initialize_testsuite(engine, session, "nts")
+    # initialize_testsuite(engine, session, "compile")
     initialize_testsuite(engine, session, "memcached")
     initialize_testsuite(engine, session, "ep-engine")

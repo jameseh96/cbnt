@@ -140,8 +140,8 @@ def upgrade(engine):
     session = sqlalchemy.orm.sessionmaker(engine)()
 
     # For each test suite...
-    update_testsuite(engine, session, 'NT')
-    update_testsuite(engine, session, 'Compile')
+    # update_testsuite(engine, session, 'NT')
+    # update_testsuite(engine, session, 'Compile')
     update_testsuite(engine, session, 'EP')
     update_testsuite(engine, session, 'Memcached')
     

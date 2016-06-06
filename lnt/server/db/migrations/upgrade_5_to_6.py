@@ -14,7 +14,7 @@ from sqlalchemy import *
 import lnt.server.db.migrations.upgrade_0_to_1 as upgrade_0_to_1
 
 def upgrade(engine):
-
+    return
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()
 

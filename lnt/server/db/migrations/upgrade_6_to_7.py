@@ -27,7 +27,7 @@ def upgrade(engine):
     hash_sample_type = session.query(SampleType).\
         filter_by(name="Hash").first()
 
-    ts = session.query(TestSuite).filter_by(name='nts').first()
+    # ts = session.query(TestSuite).filter_by(name='nts').first()
     hash_status_field = SampleField(name="hash_status",
                                     type=status_sample_type,
                                     info_key=".hash.status",)
@@ -35,11 +35,11 @@ def upgrade(engine):
                              type=hash_sample_type,
                              info_key=".hash",
                              status_field=hash_status_field)
-    ts.sample_fields.append(hash_status_field)
-    ts.sample_fields.append(hash_field)
-    session.add(ts)
+    # ts.sample_fields.append(hash_status_field)
+    # ts.sample_fields.append(hash_field)
+    # session.add(ts)
     session.commit()
-
+    return 
     session.connection().execute("""
 ALTER TABLE "NT_Sample"
 ADD COLUMN "hash_status" INTEGER

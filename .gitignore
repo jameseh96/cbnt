@@ -7,3 +7,4 @@ atlassian-ide-plugin.xml
 LNT.egg-info/
 lnt.log
 lnt/.idea/
+venv/

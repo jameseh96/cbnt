@@ -272,7 +272,6 @@ def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,
             cr = sri.get_run_comparison_result(
                 run_a, run_b, test_id, field,
                 ts.Sample.get_hash_of_binary_field(), cv=cv, stable_test=stable_test)
-            print repr(cr)
             comparison_results[(name, field)] = cr
             test_status = cr.get_test_status()
             perf_status = cr.get_value_status()

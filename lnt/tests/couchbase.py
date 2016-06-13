@@ -1,4 +1,5 @@
 import argparse
+import base64
 import builtintest
 import calendar
 import datetime
@@ -141,13 +142,14 @@ class CouchbaseTest(builtintest.BuiltinTest):
         return lnt.testing.Machine('test-machine', {})
 
     def _generate_run_info(self, tag, result_type, run_order):
-        env_vars = ['BUILD_NUMBER',
-                    'GERRIT_CHANGE_COMMIT_MESSAGE',
-                    'GERRIT_CHANGE_OWNER_NAME',
-                    'GERRIT_CHANGE_URL',
-                    'BUILD_URL']
+        env_vars = {'Build Number': 'BUILD_NUMBER',
+                    'Owner': 'GERRIT_CHANGE_OWNER_NAME',
+                    'Gerrit URL': 'GERRIT_CHANGE_URL',
+                    'Jenkins URL': 'BUILD_URL',
+                    'Commit Message': 'GERRIT_CHANGE_COMMIT_MESSAGE'}
 
-        run_info = {env_var: os.getenv(env_var) for env_var in env_vars
+        run_info = {key: os.getenv(env_var)
+                    for key, env_var in env_vars.iteritems()
                     if os.getenv(env_var)}
 
         git_sha = os.getenv('GERRIT_PATCHSET_REVISION')

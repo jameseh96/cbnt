@@ -263,7 +263,7 @@ class ComparisonResult:
 
 class RunInfo(object):
     def __init__(self, testsuite, runs_to_load,
-                 aggregation_fn=stats.safe_min, confidence_lv=.05,
+                 aggregation_fn=stats.median, confidence_lv=.05,
                  only_tests=None, cv=[]):
         """Get all the samples needed to build a CR.
         runs_to_load are the run IDs of the runs to get the samples from.

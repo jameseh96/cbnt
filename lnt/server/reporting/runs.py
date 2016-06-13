@@ -13,7 +13,7 @@ STABILITY_THRESHOLD = 10
 def generate_run_report(run, baseurl, only_html_body=False,
                         num_comparison_runs=0, result=None,
                         compare_to=None, baseline=None,
-                        aggregation_fn=lnt.util.stats.safe_min, confidence_lv=.05,
+                        aggregation_fn=lnt.util.stats.median, confidence_lv=.05,
                         styles=dict(), classes=dict(), cv=False):
     """
     generate_run_report(...) -> (str: subject, str: text_report,

@@ -247,7 +247,7 @@ class V4RequestInfo(object):
         aggregation_fn_name = request.args.get('aggregation_fn')
         self.aggregation_fn = {'min': lnt.util.stats.safe_min,
                                'median': lnt.util.stats.median}.get(
-            aggregation_fn_name, lnt.util.stats.safe_min)
+            aggregation_fn_name, lnt.util.stats.median)
 
         # Get the MW confidence level.
         try:
@@ -338,7 +338,7 @@ class V4CVRequestInfo(object):
         aggregation_fn_name = request.args.get('aggregation_fn')
         self.aggregation_fn = {'min': lnt.util.stats.safe_min,
                                'median': lnt.util.stats.median}.get(
-            aggregation_fn_name, lnt.util.stats.safe_min)
+            aggregation_fn_name, lnt.util.stats.median)
 
         # Get the MW confidence level.
         try:
@@ -503,7 +503,7 @@ def v4_run(id):
     else:
         test_min_value_filter = 0.0
 
-    options['aggregation_fn'] = request.args.get('aggregation_fn', 'min')
+    options['aggregation_fn'] = request.args.get('aggregation_fn', 'median')
 
     # Get the test names.
     test_info = ts.query(ts.Test.name, ts.Test.id).\
@@ -585,7 +585,7 @@ def v4_cv_run(id):
     else:
         test_min_value_filter = 0.0
 
-    options['aggregation_fn'] = request.args.get('aggregation_fn', 'min')
+    options['aggregation_fn'] = request.args.get('aggregation_fn', 'median')
 
     # Get the test names.
     test_info = ts.query(ts.Test.name, ts.Test.id).\
@@ -1055,12 +1055,11 @@ def v4_graph():
             x = rev_x[0] if len(rev_x)==1 else pos
 
             values = [v*normalize_by for v in data]
-            aggregation_fn = min
-            if field.bigger_is_better:
-                aggregation_fn = max
-            agg_value, agg_index = \
-                aggregation_fn((value, index)
-                               for (index, value) in enumerate(values))
+
+            # Ensure the median value is being used
+            values = sorted(values)
+            agg_index = len(values) // 2
+            agg_value = values[agg_index]
 
             # Generate metadata.
             metadata = {"label": point_label}

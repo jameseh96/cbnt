@@ -91,7 +91,7 @@ def action_create(name, args):
 
     from optparse import OptionParser, OptionGroup
     parser = OptionParser("%s [options] <path>" % name)
-    parser.add_option("", "--name", dest="name", default="LNT",
+    parser.add_option("", "--name", dest="name", default="CBNT",
                       help="name to use for the installation [%default]")
     parser.add_option("", "--config", dest="config", default="lnt.cfg",
                       help="name of the LNT config file [%default]")

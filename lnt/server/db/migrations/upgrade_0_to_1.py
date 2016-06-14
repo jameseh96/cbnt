@@ -458,7 +458,7 @@ def initialize_testsuite(engine, session, name):
 
 ###
 
-def upgrade(engine):
+def upgrade(engine, cb_testsuites):
     # This upgrade script is special in that it needs to handle databases "in
     # the wild" which have contents but existed before versioning.
 
@@ -478,10 +478,14 @@ def upgrade(engine):
     if session.query(TestSuite).filter_by(name="compile").first() is None:
         pass
         # initialize_compile_definition(engine, session)
-    if session.query(TestSuite).filter_by(name="ep-engine").first() is None:
-        initialize_epengine_definition(engine, session)
-    if session.query(TestSuite).filter_by(name="memcached").first() is None:
-        initialize_memcached_definition(engine, session)
+
+    # Initialise the Couchbase testsuites
+    for testsuite in cb_testsuites:
+        if (session.query(TestSuite)
+                .filter_by(name=testsuite['name']).first() is None):
+            initialize_couchbase_definition(
+                engine, session, name=testsuite['name'],
+                key_name=testsuite['db_key'])
 
     # Commit the results.
     session.commit()
@@ -489,5 +493,5 @@ def upgrade(engine):
     # Materialize the test suite tables.
     # initialize_testsuite(engine, session, "nts")
     # initialize_testsuite(engine, session, "compile")
-    initialize_testsuite(engine, session, "memcached")
-    initialize_testsuite(engine, session, "ep-engine")
+    for testsuite in cb_testsuites:
+        initialize_testsuite(engine, session, testsuite['name'])

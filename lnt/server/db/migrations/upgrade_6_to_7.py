@@ -15,7 +15,7 @@ from lnt.server.db.migrations.upgrade_0_to_1 \
   import SampleType, TestSuite, SampleField
 
 
-def upgrade(engine):
+def upgrade(engine, _):
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()
 

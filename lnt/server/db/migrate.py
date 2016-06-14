@@ -19,9 +19,14 @@ from sqlalchemy import Column, String, Integer
 import lnt.server.db.util
 
 ###
-# Schema for in-database version information.
+# List of all Couchbase testsuites
+# If you want to add a new one, add it to the list
+CB_TESTSUITES = [{'name': 'memcached', 'db_key': 'Memcached'},
+                 {'name': 'ep-engine', 'db_key': 'EP'}]
 
+# Schema for in-database version information.
 Base = sqlalchemy.ext.declarative.declarative_base()
+
 
 class SchemaVersion(Base):
     __tablename__ = 'SchemaVersion'
@@ -155,7 +160,7 @@ def update_schema(engine, session, versions, available_migrations, schema_name):
         # FIXME: Execute this inside a transaction?
         logger.info("applying upgrade for version %d to %d" % (
                 db_version.version, db_version.version+1))
-        upgrade_method(engine)
+        upgrade_method(engine, CB_TESTSUITES)
 
         # Update the schema version.
         db_version.version += 1

@@ -63,12 +63,12 @@ def upgrade_testsuite(engine, session, name):
     # respect to Postgres like databases).
     session.commit()
 
-def upgrade(engine):
+def upgrade(engine, cb_testsuites):
     # Create a session.
     session = sqlalchemy.orm.sessionmaker(engine)()
 
     # Create our FieldChangeField table and commit.
     # upgrade_testsuite(engine, session, 'nts')
     # upgrade_testsuite(engine, session, 'compile')
-    upgrade_testsuite(engine, session, 'ep-engine')
-    upgrade_testsuite(engine, session, 'memcached')
+    for testsuite in cb_testsuites:
+        upgrade_testsuite(engine, session, testsuite['name'])

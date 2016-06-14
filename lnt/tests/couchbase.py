@@ -4,8 +4,10 @@ import builtintest
 import calendar
 import datetime
 import json
-import subprocess
+import multiprocessing
 import os
+import platform
+import subprocess
 import sys
 import time
 import urllib2
@@ -76,6 +78,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         return 'Couchbase performance test suite'
 
     def run_test(self, name, args):
+        machine = self._generate_machine()
         parsed_args = self._parse_args(args)
         config = self._parse_config(parsed_args.config)
         test_results = self._run_tests(config, parsed_args.iterations)
@@ -138,8 +141,12 @@ class CouchbaseTest(builtintest.BuiltinTest):
         return test_results
 
     def _generate_machine(self):
-        #TODO: Make machine generation smarter
-        return lnt.testing.Machine('test-machine', {})
+        parameters = {'hardware': platform.machine(),
+                      'cores': multiprocessing.cpu_count(),
+                      'os': platform.version()}
+
+        machine_name = os.getenv('CBNT_MACHINE_NAME', platform.node())
+        return lnt.testing.Machine(machine_name, parameters)
 
     def _generate_run_info(self, tag, result_type, run_order):
         env_vars = {'Build Number': 'BUILD_NUMBER',

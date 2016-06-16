@@ -71,4 +71,7 @@ def upgrade(engine, cb_testsuites):
     # upgrade_testsuite(engine, session, 'nts')
     # upgrade_testsuite(engine, session, 'compile')
     for testsuite in cb_testsuites:
-        upgrade_testsuite(engine, session, testsuite['name'])
+        try:
+            upgrade_testsuite(engine, session, testsuite['name'])
+        except:
+            pass

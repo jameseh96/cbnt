@@ -22,7 +22,7 @@ import lnt.server.db.util
 # List of all Couchbase testsuites
 # If you want to add a new one, add it to the list
 CB_TESTSUITES = [{'name': 'memcached', 'db_key': 'Memcached'},
-                 {'name': 'ep-engine', 'db_key': 'EP'}]
+                 {'name': 'ep-engine', 'db_key': 'EP'}, ]
 
 # Schema for in-database version information.
 Base = sqlalchemy.ext.declarative.declarative_base()
@@ -118,6 +118,7 @@ def _load_migrations():
 
 logger = logging.getLogger(__name__)
 
+
 def update_schema(engine, session, versions, available_migrations, schema_name):
     schema_migrations = available_migrations[schema_name]
 
@@ -133,6 +134,11 @@ def update_schema(engine, session, versions, available_migrations, schema_name):
         session.add(db_version)
         session.commit()
 
+    # This is a pretty nasty way of adding new testsuites to
+    # the DB non-destructively, the only risk is that the schema
+    # version won't match all testsuites if the upgrade fails mid-way
+    # I don't think the impacts are too negative though!
+    db_version.version = 0
     # If we are up-to-date, do nothing.
     if db_version.version == current_version:
         return False

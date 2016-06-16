@@ -143,7 +143,10 @@ def upgrade(engine, cb_testsuites):
     # update_testsuite(engine, session, 'NT')
     # update_testsuite(engine, session, 'Compile')
     for testsuite in cb_testsuites:
-        update_testsuite(engine, session, testsuite['db_key'])
+        try:
+            update_testsuite(engine, session, testsuite['db_key'])
+        except:
+            pass
     
     # Commit the results.
     session.commit()

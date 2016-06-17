@@ -1,7 +1,0 @@
-lnt_server:
-  container_name: lnt_server
-  build: ../../
-  dockerfile: deployment/docker/Dockerfile
-  ports:
-    - "4999:8000"
-  restart: always

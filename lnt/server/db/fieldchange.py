@@ -11,7 +11,7 @@ from lnt.server.db import rules_manager as rules
 # How many runs backwards to use in the previous run set.
 # More runs are slower (more DB access), but may provide
 # more accurate results.
-FIELD_CHANGE_LOOKBACK = 10
+FIELD_CHANGE_LOOKBACK = 1
 
 
 def post_submit_tasks(ts, run_id):

@@ -20,7 +20,7 @@ UNSTABLE_IMPROVED = 'UNSTABLE_IMPROVED'
 
 # The smallest measureable change we can detect.
 MIN_VALUE_PRECISION = 0.001
-MIN_REGRESSION_PCT = 0.1
+MIN_REGRESSION_PCT = 0.05
 
 def absmin_diff(current, prevs):
     """Min of differences between current sample and all previous samples.

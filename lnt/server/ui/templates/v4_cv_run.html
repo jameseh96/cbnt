@@ -188,7 +188,9 @@ $('.profile-prev-only').tooltip();
       <tr>
         <td> <b>{{key}}</b> </td>
         {# Split lines in multi-line values. #}
-        {% if '\n' in value %}
+        {% if value.startswith('http://') %}
+             <td><a href="{{ value }}">{{value}}</a></td>
+        {% elif '\n' in value %}
           <td>
           {% for ln in value.split('\n') %}
             {{ ln }}<br>

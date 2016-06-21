@@ -5,7 +5,7 @@ EXPOSE 8000
 RUN pip install virtualenv
 RUN virtualenv /lnt/venv
 
-ADD deployment/docker/run.sh /run.sh
+ADD deployment/docker/server/run.sh /run.sh
 ADD . /lnt
 
 RUN . /lnt/venv/bin/activate

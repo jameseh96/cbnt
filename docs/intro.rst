@@ -10,10 +10,10 @@ results to the server.
 
 The package was originally written for use in testing LLVM compiler
 technologies, but is designed to be usable for the performance testing of any
-software.
+software, in this case Couchbase software.
 
-If you are an LLVM developer who is mostly interested in just using LNT to run
-the test-suite against some compiler, then you should fast forward to the
+If you are a developer who is mostly interested in just using CBNT for the
+test harness, then you should fast forward to the
 :ref:`quickstart` or to the information on :ref:`tests`.
 
 LNT uses a simple and extensible format for interchanging data between the test
@@ -78,28 +78,6 @@ To create an LNT instance with PostgreSQL backend, you need to do this instead:
 
       lnt runserver path/to/install-dir
 
-Development
------------
-
-Developing LNT should be done under a virtualenv (most likely in 'develop'
-mode). Currently, the tests require:
-
- 1. 'lit', the LLVM test runner, is available.
-
- 2. If inside a virtualenv, the virtualenv will need to be activated because the
- tests want to run Python directly. This should be fixed to substitute in the
- Python that was used to run lit, so the venv doesn't have to be active.
-
-To run the tests use, e.g.::
-
-  lit -sv $ROOT/tests
-
-This requires the 'lit' testing tool be installed. You can also use::
-
-  python setup.py test
-
-if you prefer 'unittest' style output (this still requires that 'lit' be
-installed).
 
 Architecture
 ------------
@@ -109,8 +87,4 @@ for the templating engine. My hope is to eventually move to a more AJAXy web
 interface.
 
 The database layer uses SQLAlchemy for its ORM, and is typically backed by
-SQLite, although I have tested on MySQL on the past, and supporting other
-databases should be trivial. My plan is to always support SQLite as this allows
-the possibility of developers easily running their own LNT installation for
-viewing nightly test results, and to run with whatever DB makes the most sense
-on the server.
+SQLite.

@@ -1,0 +1,27 @@
+<testsuites tests="23" failures="0" disabled="0" errors="0" timestamp="2016-06-21T16:07:49" time="24.557" name="AllTests">
+  <testsuite name="SubdocPerfTest" tests="23" failures="0" disabled="0" errors="0" time="24.49">
+    <testcase name="Array5k_PushFirst" status="run" time="0.48" classname="SubdocPerfTest" />
+    <testcase name="Array5k_PushLast" status="run" time="0.322" classname="SubdocPerfTest" />
+    <testcase name="Array5k_AddUnique" status="run" time="1.275" classname="SubdocPerfTest" />
+    <testcase name="Array5k_RemoveBaseline" status="run" time="0.004" classname="SubdocPerfTest" />
+    <testcase name="Array5k_RemoveFirst" status="run" time="0.518" classname="SubdocPerfTest" />
+    <testcase name="Array5k_RemoveLast" status="run" time="1.037" classname="SubdocPerfTest" />
+    <testcase name="Array5k_ReplaceFirst" status="run" time="0.32" classname="SubdocPerfTest" />
+    <testcase name="Array5k_ReplaceMiddle" status="run" time="1.341" classname="SubdocPerfTest" />
+    <testcase name="Array5k_ReplaceLast" status="run" time="1.637" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_Add" status="run" time="2.608" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_RemoveBaseline" status="run" time="0.01" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_Remove" status="run" time="0.359" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_Get" status="run" time="2.577" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_Exists" status="run" time="2.564" classname="SubdocPerfTest" />
+    <testcase name="Array5k_PushFirst_Multipath" status="run" time="0.083" classname="SubdocPerfTest" />
+    <testcase name="Array5k_RemoveFirst_Multipath" status="run" time="0.085" classname="SubdocPerfTest" />
+    <testcase name="Array5k_ReplaceFirst_Multipath" status="run" time="0.094" classname="SubdocPerfTest" />
+    <testcase name="Array5k_ReplaceMiddle_Multipath" status="run" time="0.818" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_Add_Multipath" status="run" time="2.122" classname="SubdocPerfTest" />
+    <testcase name="Array5k_PushFirst_Fulldoc" status="run" time="0.936" classname="SubdocPerfTest" />
+    <testcase name="Array5k_PushLast_Fulldoc" status="run" time="0.915" classname="SubdocPerfTest" />
+    <testcase name="Dict5k_Add_Fulldoc" status="run" time="2.942" classname="SubdocPerfTest" />
+    <testcase name="Array5k_Replace_Fulldoc" status="run" time="1.443" classname="SubdocPerfTest" />
+  </testsuite>
+</testsuites>

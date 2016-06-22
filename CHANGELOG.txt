@@ -1,3 +1,13 @@
+CBNT
+====
+
+* Added git awareness - for commit validation
+* Added generic Couchbase test harness:
+  * Takes xml reports as input and outputs json report
+  * Config is handled by a yaml file allowing arbitrary command execution
+* Added Docker deployment
+* Added 'Test Stability' heuristics
+
 0.4.1
 =====
 

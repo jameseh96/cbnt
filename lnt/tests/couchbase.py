@@ -84,7 +84,8 @@ class CouchbaseTest(builtintest.BuiltinTest):
         test_results = self._run_tests(config, parsed_args.iterations)
         name = name.split()[-1]
         report = self._generate_report(name, parsed_args.result_type,
-                                       parsed_args.run_order, test_results)
+                                       parsed_args.run_order, test_results,
+                                       parsed_args.parent_commit)
         parsed_args.report_path = parsed_args.report_path or 'report.json'
         lnt_report_file = open(parsed_args.report_path, 'w')
         print >> lnt_report_file, report.render()
@@ -94,9 +95,11 @@ class CouchbaseTest(builtintest.BuiltinTest):
             server_report, sys.stdout, sys.stderr, parsed_args.verbose)
         return server_report
 
-    def _generate_report(self, tag, result_type, run_order, test_results):
+    def _generate_report(self, tag, result_type, run_order, test_results,
+                         parent_commit):
         machine = self._generate_machine()
-        run_info = self._generate_run_info(tag, result_type, run_order)
+        run_info = self._generate_run_info(tag, result_type, run_order,
+                                           parent_commit)
         run = lnt.testing.Run(self.start, self.end, info=run_info)
         test_outputs = []
         for test_result in test_results:
@@ -118,6 +121,8 @@ class CouchbaseTest(builtintest.BuiltinTest):
                             help='show verbose test results')
         parser.add_argument('--report_path',
                             help='path to save report file to')
+        parser.add_argument('--parent_commit', default=None,
+                            help='SHA1 of the parent commit')
         parser.add_argument('--submit_url', help='url to submit report to',
                             nargs='*')
         parser.add_argument('--commit', default=True, type=int,
@@ -148,7 +153,7 @@ class CouchbaseTest(builtintest.BuiltinTest):
         machine_name = os.getenv('CBNT_MACHINE_NAME', platform.node())
         return lnt.testing.Machine(machine_name, parameters)
 
-    def _generate_run_info(self, tag, result_type, run_order):
+    def _generate_run_info(self, tag, result_type, run_order, parent_commit):
         env_vars = {'Build Number': 'BUILD_NUMBER',
                     'Owner': 'GERRIT_CHANGE_OWNER_NAME',
                     'Gerrit URL': 'GERRIT_CHANGE_URL',
@@ -169,7 +174,10 @@ class CouchbaseTest(builtintest.BuiltinTest):
                          'tag': tag})
 
         if result_type == 'cv':
-            run_info.update({'parent_commit': self._get_parent_commit()})
+            if not parent_commit:
+                parent_commit = self._get_parent_commit()
+
+            run_info.update({'parent_commit': parent_commit})
 
         return run_info
 

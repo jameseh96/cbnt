@@ -3,13 +3,15 @@
 Quickstart Guide
 ================
 
-This quickstart guide is designed for LLVM developers who are primarily
-interested in using LNT to test compilers using the LLVM test-suite.
+This quickstart guide is designed for developers who are primarily
+interested in using CBNT to test performance.
 
 Installation
 ------------
 
-The first thing to do is to checkout install the LNT software itself. The
+Building Locally
+----------------
+The first thing to do is to checkout install the CBNT software itself. The
 following steps should suffice on any modern Unix variant:
 
 #. Install ``virtualenv``, if necessary::
@@ -19,7 +21,7 @@ following steps should suffice on any modern Unix variant:
    ``virtualenv`` is a standard Python tool for allowing the installation of
    Python applications into their own sandboxes, or virtual environments.
 
-#. Create a new virtual environment for the LNT application::
+#. Create a new virtual environment for the CBNT application::
 
             virtualenv ~/mysandbox
 
@@ -27,18 +29,58 @@ following steps should suffice on any modern Unix variant:
 
 #. Checkout the LNT sources::
 
-            svn co http://llvm.org/svn/llvm-project/lnt/trunk ~/lnt
+            git clone https://github.com/couchbaselabs/cbnt.git
 
 #. Install LNT into the virtual environment::
 
-           ~/mysandbox/bin/python ~/lnt/setup.py develop
+           ~/mysandbox/bin/python ~/cbnt/setup.py develop
 
    We recommend using ``develop`` instead of install for local use, so that any
    changes to the LNT sources are immediately propagated to your
    installation. If you are running a production install or care a lot about
    stability, you can use ``install`` which will copy in the sources and you
-   will need to explicitly re-install when you wish to update the LNT
+   will need to explicitly re-install when you wish to update the CBNT
    application.
+
+Docker Installation
+-------------------
+If you do not wish to setup the environment locally, then Docker deployment is
+also supported, all files are located in ``deployment/docker``.
+
+There is a pre-canned version of the server container at
+https://hub.docker.com/r/mattcarabine/cbnt_server and the client container
+(which also includes everything required to build Couchbase) at
+https://hub.docker.com/r/mattcarabine/cbnt_client
+
+You can download these images with the following commands::
+
+          docker pull mattcarabine/cbnt_server
+
+          docker pull mattcarabine/cbnt_client
+
+These can then run these using the commands::
+
+          docker run -p 0.0.0.0:80:8000 -v <host_dir>:/lnt/db --name=cbnt_server -d mattcarabine/cbnt_server
+
+          docker run -p 0.0.0.0:<host_port>:22 --name=cbnt_client -d mattcarabine/cbnt_client
+
+The ``-v`` is recommended to create a persistent volume on your host machine,
+so that data is not lost if you have to rebuild your container.
+
+These are very handy for quick deployment but do not allow you to easily make
+changes to the code that is being run, instead you may wish to consider using
+the local build instructions detailed above.
+
+Alternatively, you could rebuild the docker containers yourself using the
+supplied Dockerfiles.
+The command to do so (run from the individual docker directories) would be::
+
+       docker build -f Dockerfile -t mattcarabine/cbnt_server ../../../
+
+       docker build -f Dockerfile -t mattcarabine/cbnt_client ../../../
+
+Although this method may be quite heavy weight if you expect to make code
+changes often, so you want to just build natively instead!
 
 That's it!
 
@@ -46,29 +88,35 @@ That's it!
 Running Tests
 -------------
 
-To execute the LLVM test-suite using LNT you use the ``lnt runtest``
+To execute testsuites using CBNT you use the ``lnt runtest``
 command. The information below should be enough to get you started, but see the
 :ref:`tests` section for more complete documentation.
 
-#. Checkout the LLVM test-suite, if you haven't already::
+#. Checkout a Couchbase build, if you haven't already::
 
-     svn co http://llvm.org/svn/llvm-project/test-suite/trunk ~/llvm-test-suite
+      mkdir source
+      cd source
+      repo init -u git://github.com/couchbase/manifest -m branch-master.xml
+      repo sync
+      make
 
-   You should always keep the test-suite directory itself clean (that is, never
-   do a configure inside your test suite). Make sure not to check it out into
-   the LLVM projects directory, as LLVM's configure/make build will then want to
-   automatically configure it for you.
+#. Execute the ``lnt runtest {ep-engine|memcached}`` test producer, point it at
+the config file you wish to test::
 
-#. Execute the ``lnt runtest nt`` test producer, point it at the test suite and
-   the compiler you want to test::
+     lnt runtest ep-engine <config_file> master --run_order=<run_order> --submit_url=<submit_url>/submitRun -v --commit=1
 
-     lnt runtest nt \
-         --sandbox SANDBOX \
-         --cc ~/llvm.obj/Release/bin/clang \
-         --test-suite ~/llvm-test-suite
+An important thing to note here though is that CBNT is designed to be powered
+from Jenkins, so there are a few environment variables that need to be set to
+allow the CBNT test harness to work correctly:
 
-   The ``SANDBOX`` value is a path to where the test suite build products and
-   results will be stored (inside a timestamped directory, by default).
+* 'GERRIT_PATCHSET_REVISION' - This is the git commit at the ``HEAD`` of the current project
+* If running a commit validation test a few more are also required:
+    - 'GERRIT_PROJECT' - Name of the project (e.g ep-engine or memcached)
+    - 'GERRIT_BRANCH' - The branch the gerrit change is on (e.g master)
+    - 'GERRIT_CHANGE_ID' - The gerrit changeid of the commit
+    - Alternatively if the commit is not yet on gerrit but you wish to submit the
+      result for testing purposes then you can do so using the flag
+      ``--parent_commit`` which specifies the SHA1 of the parent of your commit
 
 
 Viewing Results
@@ -100,6 +148,3 @@ with::
      lnt runserver ~/myperfdb
 
 which runs the server on ``http://localhost:8000`` by default.
-
-In the future, LNT will grow a robust set of command line tools to allow
-investigation of performance results without having to use the web UI.

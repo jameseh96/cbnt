@@ -3,10 +3,10 @@
 Concepts
 ========
 
-LNT's data model is pretty simple, and just following the :ref:`quickstart` can
+CBNT's data model is pretty simple, and just following the :ref:`quickstart` can
 get you going with performance testing. Moving beyond that, it is useful to have
-an understanding of some of the core concepts in LNT. This can help you get the
-most out of LNT.
+an understanding of some of the core concepts in CBNT. This can help you get the
+most out of CBNT.
 
 Orders Machines and Tests
 -------------------------
@@ -15,20 +15,18 @@ LNT's data model was designed to track the performance of a system in many confi
 over its evolution.  In LNT, and Order is the x-axis of your performance graphs.  It is 
 the thing that is changing.  Examples of common orders are software versions, 
 Subversion revisions, and time stamps. Orders can also be used to represent
-treatments, such as a/b.  You can put anything you want into LNT as an order,
+treatments, such as a/b.  You can put anything you want into CBNT as an order,
 as long as it can be sorted by Python's sort function.
+The idea being that an order represents a state of the source tree at a given
+time, as such it has certain information in it, such as the ``git_commit`` of the
+commit at the HEAD of the branch. Additionally CV orders have ``parent_commits``
+to identify which order is the parent of the commit validation job.
 
-A Machine in LNT is the logical bucket which results are categorized by. 
+A Machine in CBNT is the logical bucket which results are categorized by.
 Comparing results from the same machine is easy, across machines is harder.
 Sometimes machine can literally be a machine, but more abstractly, it can be any
 configuration you are interested in tracking. For example, to store results
-from an Arm test machine, you could have a machine call "ArmMachine"; but, you 
-may want to break machines up further for example "ArmMachine-Release"
-"ArmMachine-Debug", when you compile the thing you want to test in two modes.
-When doing testing of LLVM, we often string all the useful parameters of the
-configuration into one machines name:: 
-
-    <hardware>-<arch>-<optimization level>-<branch-name>
+from an Arm test machine, you could have a machine call "ArmMachine".
 
 Tests are benchmarks, the things you are actually testing.
 

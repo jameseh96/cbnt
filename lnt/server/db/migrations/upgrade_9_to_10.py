@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Version 10 adds Gerrit Change IDs
 
 import sqlalchemy

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Version 10 adds Gerrit Change IDs
 
 import sqlalchemy
@@ -71,3 +70,4 @@ def upgrade(engine, cb_testsuites):
         except Exception as e:
             print(e)
             pass
+

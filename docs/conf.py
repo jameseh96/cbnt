@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath('..'))
 
 import lnt
 
-project = "LNT"
+project = "CBNT"
 project_module = lnt
 
 # -- General configuration -----------------------------------------------------
@@ -43,10 +43,6 @@ source_suffix = '.rst'
 
 # The master toctree document.
 master_doc = 'contents'
-
-# General information about the project.
-copyright = u'%s, %s' % (datetime.datetime.now().year,
-                         project_module.__author__)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -102,7 +98,7 @@ html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
 html_theme_options = {
     # Navigation bar title. (Default: ``project`` value)
-    'navbar_title': "LNT",
+    'navbar_title': "CBNT",
 
     # Tab name for entire site. (Default: "Site")
     'navbar_site_name': "Sections",

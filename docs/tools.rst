@@ -12,15 +12,15 @@ Client-Side Tools
 -----------------
 
   ``lnt checkformat [<file>]``
-    Checks the syntax of an LNT test report file. In addition to verifying that
-    LNT can read the raw format (e.g., JSON or property list), this also creates
+    Checks the syntax of an CBNT test report file. In addition to verifying that
+    CBNT can read the raw format (e.g., JSON or property list), this also creates
     a temporary in-memory database instance and ensures that the test report
     file can be imported correctly.
 
     If run without arguments, this expects to read the input file from ``stdin``.
 
   ``lnt convert <input path> [<output path>]``
-    Convert between LNT test report formats. By default, this will convert to
+    Convert between CBNT test report formats. By default, this will convert to
     the property list format. You can use ``-`` for either the input (to read
     from ``stdin) or the output (to write to ``stdout``).
 
@@ -44,27 +44,27 @@ Client-Side Tools
 Server-Side Tools
 -----------------
 
-The following tools are used to interact with an LNT server:
+The following tools are used to interact with an CBNT server:
 
   ``lnt create <path>``
-    Creates a new LNT server instance. This command has a number of parameters
+    Creates a new CBNT server instance. This command has a number of parameters
     to tweak the generated server, but they can all be modified after the fact
-    in the LNT configuration file.
+    in the CBNT configuration file.
 
     The default server will have a sqlite3 database named *default*. You can
     specify to use PostgreSQL using ``--db-dir postgresql://user@hostname``.
 
   ``lnt createdb <path>``
-    Creates a new LNT sqlite3 database at the specified path.
+    Creates a new CBNT sqlite3 database at the specified path.
 
   ``lnt import [--commit=1] <instance path> <file>+``
-    Import an LNT data file into a database. You can use ``--database`` to
+    Import an CBNT data file into a database. You can use ``--database`` to
     select the database to write to. Note that by default this will also
     generate report emails if enabled in the configuration, you can use
     ``--no-email`` to disable this.
 
   ``lnt runserver <instance path>``
-    Start the LNT server using a development WSGI server. Additional options can
+    Start the CBNT server using a development WSGI server. Additional options can
     be used to control the server host and port, as well as useful development
     features such as automatic reloading.
 

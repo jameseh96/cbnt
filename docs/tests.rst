@@ -3,13 +3,9 @@
 Test Producers
 ==============
 
-On the client-side, LNT comes with a number of built-in test data producers.
-This section focuses on the LLVM test-suite (aka nightly test) generator, since
-it is the primary test run using the LNT infrastructure, but note that LNT also
-includes tests for other interesting pieces of data, for example Clang
-compile-time performance.
+On the client-side, CBNT comes with a number of built-in test data producers.
 
-LNT also makes it easy to add new test data producers and includes examples of
+CBNT also makes it easy to add new test data producers and includes examples of
 custom data importers (e.g., to import buildbot build information into) and
 dynamic test data generators (e.g., abusing the infrastructure to plot graphs,
 for example).
@@ -17,7 +13,7 @@ for example).
 Running a Local Server
 ----------------------
 
-It is useful to set up a local LNT server to view the results of tests, either
+It is useful to set up a local CBNT server to view the results of tests, either
 for personal use or to preview results before submitting them to a public
 server. To set up a one-off server for testing::
 
@@ -26,7 +22,7 @@ server. To set up a one-off server for testing::
   created LNT configuration in '/tmp/FOO'
   ...
 
-  # Run a local LNT server.
+  # Run a local CBNT server.
   $ lnt runserver /tmp/FOO &> /tmp/FOO/runserver.log &
   [2] 69694
 

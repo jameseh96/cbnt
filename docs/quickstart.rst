@@ -27,16 +27,16 @@ following steps should suffice on any modern Unix variant:
 
    This will create a new virtual environment at ``~/mysandbox``.
 
-#. Checkout the LNT sources::
+#. Checkout the CBNT sources::
 
             git clone https://github.com/couchbaselabs/cbnt.git
 
-#. Install LNT into the virtual environment::
+#. Install CBNT into the virtual environment::
 
            ~/mysandbox/bin/python ~/cbnt/setup.py develop
 
    We recommend using ``develop`` instead of install for local use, so that any
-   changes to the LNT sources are immediately propagated to your
+   changes to the CBNT sources are immediately propagated to your
    installation. If you are running a production install or care a lot about
    stability, you can use ``install`` which will copy in the sources and you
    will need to explicitly re-install when you wish to update the CBNT
@@ -46,6 +46,10 @@ Docker Installation
 -------------------
 If you do not wish to setup the environment locally, then Docker deployment is
 also supported, all files are located in ``deployment/docker``.
+
+The following instructions assume that you have a familiarity with Docker, if
+not then please check out the `Docker quickstart guide
+<https://docs.docker.com/engine/getstarted/>`_.
 
 There is a pre-canned version of the server container at
 https://hub.docker.com/r/mattcarabine/cbnt_server and the client container
@@ -100,6 +104,7 @@ command. The information below should be enough to get you started, but see the
       repo sync
       make
 
+_
 #. Execute the ``lnt runtest {ep-engine|memcached}`` test producer, point it at
 the config file you wish to test::
 
@@ -118,20 +123,24 @@ allow the CBNT test harness to work correctly:
       result for testing purposes then you can do so using the flag
       ``--parent_commit`` which specifies the SHA1 of the parent of your commit
 
+When running the client in a docker container you will have to run any commands
+that you wish to within your container by using the ``docker exec`` command on
+the host machine. More information about this can be found
+`here <https://docs.docker.com/engine/reference/commandline/exec/>`_.
 
 Viewing Results
 ---------------
 
 By default, ``lnt runtest nt`` will show the passes and failures after doing a
 run, but if you are interested in viewing the result data in more detail you
-should install a local LNT instance to submit the results to.
+should install a local CBNT instance to submit the results to.
 
-You can create a local LNT instance with, e.g.::
+You can create a local CBNT instance with, e.g.::
 
     lnt create ~/myperfdb
 
-This will create an LNT instance at ``~/myperfdb`` which includes the
-configuration of the LNT application and a SQLite database for storing the
+This will create an CBNT instance at ``~/myperfdb`` which includes the
+configuration of the CBNT application and a SQLite database for storing the
 results.
 
 Once you have a local instance, you can either submit results directly with::
@@ -140,9 +149,9 @@ Once you have a local instance, you can either submit results directly with::
 
 or as part of a run with::
 
-     lnt runtest --submit ~/myperfdb nt ... arguments ...
+     lnt runtest --submit ~/myperfdb memcached ... arguments ...
 
-Once you have submitted results into a database, you can run the LNT web UI
+Once you have submitted results into a database, you can run the CBNT web UI
 with::
 
      lnt runserver ~/myperfdb

@@ -158,12 +158,21 @@ class CouchbaseTest(builtintest.BuiltinTest):
         env_vars = {'Build Number': 'BUILD_NUMBER',
                     'Owner': 'GERRIT_CHANGE_OWNER_NAME',
                     'Gerrit URL': 'GERRIT_CHANGE_URL',
-                    'Jenkins URL': 'BUILD_URL',
-                    'Commit Message': 'GERRIT_CHANGE_COMMIT_MESSAGE'}
+                    'Jenkins URL': 'BUILD_URL'}
 
         run_info = {key: os.getenv(env_var)
                     for key, env_var in env_vars.iteritems()
                     if os.getenv(env_var)}
+
+        try:
+            commit_message = os.getenv('GERRIT_CHANGE_COMMIT_MESSAGE')
+            if commit_message:
+                commit_message = base64.b64decode(commit_message)
+        except Exception:
+            warning('Unable to decode commit message "{}", skipping'.format(
+                commit_message))
+        else:
+            run_info['Commit Message'] = commit_message
 
         git_sha = os.getenv('GERRIT_PATCHSET_REVISION')
         if not git_sha:

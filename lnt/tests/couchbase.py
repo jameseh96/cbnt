@@ -116,7 +116,8 @@ class CouchbaseTest(builtintest.BuiltinTest):
                             'for this test run')
         parser.add_argument('result_type', choices=['master', 'cv'],
                             help='type of result entry')
-        parser.add_argument('--run_order', help='run order of this test run')
+        parser.add_argument('--run_order', help='run order of this test run',
+                            default=None)
         parser.add_argument('-v', '--verbose', action='store_true',
                             help='show verbose test results')
         parser.add_argument('--report_path',
@@ -168,8 +169,13 @@ class CouchbaseTest(builtintest.BuiltinTest):
         if not git_sha:
             fatal("unable to determine git SHA for result, exiting.")
 
+        if run_order:
+            run_info['run_order'] = str(run_order)
+        else:
+            note("run order not provided, will use server-side auto-generated "
+                 "run order")
+
         run_info.update({'git_sha': git_sha,
-                         'run_order': str(run_order),
                          't': str(calendar.timegm(time.gmtime())),
                          'tag': tag})
 

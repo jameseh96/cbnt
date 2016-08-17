@@ -950,10 +950,13 @@ class TestSuiteDB(object):
             if item.info_key in run_parameters:
                 value = run_parameters.pop(item.info_key)
             else:
-                # We require that all of the order fields be present.
-                raise ValueError,"""\
-supplied run is missing required run parameter: %r""" % (
-                    item.info_key)
+                if item.info_key == 'run_order':
+                    value = self._get_max_run_order(cv)
+                else:
+                    # We require that all of the order fields be present.
+                    raise ValueError,"""\
+    supplied run is missing required run parameter: %r""" % (
+                        item.info_key)
 
             query = query.filter(item.column == value)
             order.set_field(item, value)
@@ -1298,6 +1301,17 @@ test %r is misnamed for reporting under schema %r""" % (
         parent_commit = run.order.parent_commit
         parent_order = self.query(self.Order).filter(self.Order.git_sha == parent_commit).first()
         return parent_order
+
+    def _get_max_run_order(self, cv=False):
+        order_class = self.CVOrder if cv else self.Order
+        values = self.query(order_class.llvm_project_revision).all()
+
+        if not values:
+            return 0
+
+        max_value = max(int(value[0]) for value in values)
+
+        return max_value + 1
 
     def is_test_stable(self, run, test_id, stability_threshold, cv=False):
 

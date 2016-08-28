@@ -20,7 +20,7 @@ UNSTABLE_IMPROVED = 'UNSTABLE_IMPROVED'
 
 # The smallest measureable change we can detect.
 MIN_VALUE_PRECISION = 0.001
-MIN_REGRESSION_PCT = 0.05
+MIN_REGRESSION_PCT = 0.01
 
 def absmin_diff(current, prevs):
     """Min of differences between current sample and all previous samples.
@@ -86,7 +86,8 @@ class ComparisonResult:
         self.delta = 0
         self.pct_delta = 0.0
         if self.current and prev_samples:
-            self.delta, value = absmin_diff(self.current, prev_samples)
+            prev_median = stats.median(prev_samples)
+            self.delta, value = absmin_diff(self.current, [prev_median])
             if value != 0:
                 self.pct_delta = self.delta / value
             self.previous = value
@@ -103,6 +104,11 @@ class ComparisonResult:
         else:
             self.stddev = None
             self.MAD = None
+
+        if prev_samples and len(prev_samples) > 1 and isinstance(prev_samples[0], float):
+            self.prev_stddev = stats.standard_deviation(prev_samples)
+        else:
+            self.prev_stddev = None
 
         self.stddev_mean = None  # Only calculate this if needed.
         self.failed = cur_failed
@@ -196,7 +202,7 @@ class ComparisonResult:
         elif self.prev_failed:
             return UNCHANGED_PASS 
 
-        # Always ignore percentage changes below 10%, for now, we just don't have
+        # Always ignore percentage changes below 1%, for now, we just don't have
         # enough time to investigate that level of stuff.
         if ignore_small and abs(self.pct_delta) < MIN_REGRESSION_PCT:
             return UNCHANGED_PASS
@@ -205,7 +211,7 @@ class ComparisonResult:
         # basis for this, it should be obviated by appropriate statistical
         # checks, but practical evidence indicates what we currently have isn't
         # good enough (for reasons I do not yet understand).
-        if ignore_small and abs(self.delta) < .01:
+        if ignore_small and abs(self.delta) < .001:
             return UNCHANGED_PASS
 
         # Ignore tests whose delta is too small relative to the precision we can
@@ -214,18 +220,29 @@ class ComparisonResult:
         if abs(self.delta) <= 2 * value_precision * confidence_interval:
             return UNCHANGED_PASS
 
-        # Use Mann-Whitney U test to test null hypothesis that result is
-        # unchanged.
-        if len(self.samples) >= 4 and len(self.prev_samples) >= 4:
-            same = stats.mannwhitneyu(self.samples, self.prev_samples,
-                                      self.confidence_lv)
-            if same:
-                return UNCHANGED_PASS
-
         # If we have a comparison window, then measure using a symmetic
         # confidence interval.
         if self.stddev is not None:
             is_significant = abs(self.delta) > (self.stddev *
+                                                confidence_interval)
+
+            # If the delta is significant, return
+            if is_significant:
+                if self.delta < 0:
+                    if self.stable_test:
+                        return REGRESSED if self.bigger_is_better else IMPROVED
+                    else:
+                        return UNSTABLE_REGRESSED if self.bigger_is_better else UNSTABLE_IMPROVED
+                else:
+                    if self.stable_test:
+                        return IMPROVED if self.bigger_is_better else REGRESSED
+                    else:
+                        return UNSTABLE_IMPROVED if self.bigger_is_better else UNSTABLE_REGRESSED
+            else:
+                return UNCHANGED_PASS
+
+        if self.prev_stddev is not None:
+            is_significant = abs(self.delta) > (self.prev_stddev *
                                                 confidence_interval)
 
             # If the delta is significant, return

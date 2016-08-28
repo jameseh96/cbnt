@@ -299,7 +299,7 @@ function new_graph_regression_callback(data, index, update_func) {
                     'id': d.id,
                     'link': get_regression_url(db_name, test_suite_name, d.id),
                     'state': STATE_NAMES[d.state]};
-        regression_cache[index].push([parseInt(d.end_point[0], 10), d.end_point[1], metadata]);
+        regression_cache[index].push([parseInt(d.end_point[0].substring(1), 10), d.end_point[1], metadata]);
     });
     update_func();
 }

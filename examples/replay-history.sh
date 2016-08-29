@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -x
 set -e
+if [ $# -ne 2 ]
+  then
+    echo "Usage: replay-history.sh [project] [number_of_commits]"
+    exit 1
+fi
 PROJECT=$1
 NUM_COMMITS=$2
 cd ep-engine

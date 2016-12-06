@@ -5,7 +5,8 @@ Access to built-in tests.
 # FIXME: There are better ways to do this, no doubt. We also would like this to
 # be extensible outside of the installation. Lookup how 'nose' handles this.
 
-known_tests = {'memcached', 'ep_engine'}
+known_tests = {'memcached', 'ep_engine', 'memcached_watson',
+               'ep_engine_watson'}
 
 def get_test_names():
     """get_test_names() -> list

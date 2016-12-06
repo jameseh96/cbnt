@@ -1325,14 +1325,17 @@ test %r is misnamed for reporting under schema %r""" % (
             .distinct().all()
         orders_for_test.sort()
 
-        if cv:
-            parent_order = self.get_parent_order(run)
-            if parent_order:
-                run_index = orders_for_test.index(parent_order)
+        try:
+            if cv:
+                parent_order = self.get_parent_order(run)
+                if parent_order:
+                    run_index = orders_for_test.index(parent_order)
+                else:
+                    run_index = max(0, len(orders_for_test) - 1)
             else:
-                run_index = max(0, len(orders_for_test) - 1)
-        else:
-            run_index = orders_for_test.index(run.order)
+                run_index = orders_for_test.index(run.order)
+        except ValueError:
+            return True
 
         # We only care about orders within the threshold
         orders_within_threshold = orders_for_test[

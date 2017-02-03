@@ -866,6 +866,7 @@ def v4_order(id):
 
 @v4_route("/set_baseline/<int:id>")
 def v4_set_baseline(id):
+    """Update the baseline stored in the user's session."""
     ts = request.get_testsuite()
     base = ts.query(ts.Baseline).get(id)
     if not base:

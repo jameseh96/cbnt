@@ -121,13 +121,12 @@ def import_and_report(config, db_name, db, file, format, commit=False,
     if commit:
         db.commit()
         if db_config:
-            #  If we are not in a dummy instance, also run backgound jobs.
+            #  If we are not in a dummy instance, also run background jobs.
             #  We have to have a commit before we run, so subprocesses can
             #  see the submitted data.
             ts = db.testsuite.get(ts_name)
             if not cv and result['added_runs'] > 0:
-                async_ops.async_fieldchange_calc(db_name, ts, run)
-
+                async_ops.async_fieldchange_calc(db_name, ts, run, config)
     else:
         db.rollback()
     # Add a handy relative link to the submitted run.

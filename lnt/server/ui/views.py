@@ -53,6 +53,7 @@ from collections import namedtuple, defaultdict
 from lnt.util import async_ops
 from urlparse import urlparse, urljoin
 from flask import request, url_for
+from lnt.server.ui.util import baseline_key
 
 integral_rex = re.compile(r"[\d]+")
 cv_sha_regex = re.compile('h=(?P<sha>[0-9A-z]+)')
@@ -872,7 +873,7 @@ def v4_set_baseline(id):
     if not base:
         return abort(404)
     flash("Baseline set to " + base.name, FLASH_SUCCESS)
-    session['baseline'] = id
+    session[baseline_key()] = id
 
     return redirect(get_redirect_target())
 
@@ -1878,7 +1879,7 @@ def baseline():
     or None if one is not defined.
     """
     ts = request.get_testsuite()
-    base_id = session.get('baseline')
+    base_id = session.get(baseline_key())
     if not base_id:
         return None
     try:

@@ -225,7 +225,6 @@ def v4_machines():
                            ts=ts)
 
 
-
 @v4_route("/machine/<int:machine_id>/latest")
 def v4_machine_latest(machine_id):
     """Return the most recent run on this machine."""

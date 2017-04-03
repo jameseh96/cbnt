@@ -238,6 +238,24 @@ def v4_machine_latest(machine_id):
     return redirect(v4_url_for('v4_run', id=run.id))
 
 
+@v4_route("/machine/<int:machine_id>/compare")
+def v4_machine_compare(machine_id):
+    """Return the most recent run on this machine."""
+    ts = request.get_testsuite()
+    machine_compare_to_id = int(request.args['compare_to_id'])
+    machine_1_run = ts.query(ts.Run) \
+        .filter(ts.Run.machine_id == machine_id) \
+        .order_by(ts.Run.start_time.desc()) \
+        .first()
+
+    machine_2_run = ts.query(ts.Run) \
+        .filter(ts.Run.machine_id == machine_compare_to_id) \
+        .order_by(ts.Run.start_time.desc()) \
+        .first()
+
+    return redirect(v4_url_for('v4_run', id=machine_1_run.id, compare_to=machine_2_run.id))
+
+
 @v4_route("/machine/<int:id>")
 def v4_machine(id):
 
@@ -265,6 +283,8 @@ def v4_machine(id):
     cv_runs = cv_runs.items()
     cv_runs.sort()
 
+    machines = ts.query(ts.Machine).all()
+
     if request.args.get('json'):
         json_obj = dict()
         machine_obj = ts.query(ts.Machine).filter(ts.Machine.id == id).one()
@@ -288,8 +308,9 @@ def v4_machine(id):
     try:
         return render_template("v4_machine.html",
                                testsuite_name=g.testsuite_name, id=id,
-                               master_runs=master_runs, cv_runs=cv_runs)
-    except NoResultFound as e:
+                               master_runs=master_runs, cv_runs=cv_runs,
+                               machines=machines)
+    except NoResultFound:
         abort(404)
 
 

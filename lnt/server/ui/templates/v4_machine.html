@@ -65,6 +65,26 @@
 
   <section id="master-submissions">
   <h3>Master Submissions</h3>
+{#  TODO: This probably needs looking it at make it work properly #}
+{#    <section id="compare">#}
+{#        <h3>Compare</h3>#}
+{#            <p>Compare the latest run on this machine with the latest run on another.</p>#}
+{##}
+{#            <form action="{{ v4_url_for("v4_machine_compare", machine_id=machine.id)}}" method="get">#}
+{#                <p>#}
+{#                Compare {{ machine.name }} to#}
+{#                <select name="compare_to_id">#}
+{#                    {%  for machine in machines %}#}
+{#                        <option value="{{ machine.id }}">{{ machine.name }}:{{ machine.id }}</option>#}
+{#                    {% endfor %}#}
+{#                </select>#}
+{#                </p>#}
+{#                <p>#}
+{#                    <input class="btn" type="submit" value="Compare">#}
+{#                </p>#}
+{##}
+{#            </form>#}
+{#    </section>#}
   <table class="table table-striped table-hover table-condensed">
     <thead>
       <tr>

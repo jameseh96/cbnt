@@ -1589,4 +1589,9 @@ class TestSuiteDB(object):
                 test_status[test_id]["stable_for"] = "N/A"
                 test_status[test_id]["has_regressed"] = True
 
+
         return test_status, latest_order, latest_run, tests
+
+    def __repr__(self):
+        return "{} (on {})".format(self.name, self.v4db.path)
+

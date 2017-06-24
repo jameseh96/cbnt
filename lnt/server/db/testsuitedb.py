@@ -1303,7 +1303,7 @@ class TestSuiteDB(object):
 
     def importDataFromDict(self, data, commit, config=None, cv=False):
         """
-        importDataFromDict(data) -> Run, bool
+        importDataFromDict(data) -> bool, Run
 
         Import a new run from the provided test interchange data, and return the
         constructed Run record.

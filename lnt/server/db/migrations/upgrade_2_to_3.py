@@ -68,10 +68,10 @@ def upgrade(engine, cb_testsuites):
     session = sqlalchemy.orm.sessionmaker(engine)()
 
     # Create our FieldChangeField table and commit.
-    # upgrade_testsuite(engine, session, 'nts')
-    # upgrade_testsuite(engine, session, 'compile')
     for testsuite in cb_testsuites:
         try:
             upgrade_testsuite(engine, session, testsuite['name'])
         except:
             pass
+
+    session.close()

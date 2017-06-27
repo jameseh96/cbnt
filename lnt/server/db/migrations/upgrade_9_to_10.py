@@ -70,4 +70,3 @@ def upgrade(engine, cb_testsuites):
         except Exception as e:
             print(e)
             pass
-

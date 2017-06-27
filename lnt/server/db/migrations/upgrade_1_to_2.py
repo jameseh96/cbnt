@@ -150,3 +150,4 @@ def upgrade(engine, cb_testsuites):
     
     # Commit the results.
     session.commit()
+    session.close()

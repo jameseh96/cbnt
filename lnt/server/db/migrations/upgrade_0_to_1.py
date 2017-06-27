@@ -468,10 +468,10 @@ def upgrade(engine, cb_testsuites):
     session.commit()
 
     # Materialize the test suite tables.
-    # initialize_testsuite(engine, session, "nts")
-    # initialize_testsuite(engine, session, "compile")
     for testsuite in cb_testsuites:
         try:
             initialize_testsuite(engine, session, testsuite['name'])
         except:
             pass
+
+    session.close()

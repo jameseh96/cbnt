@@ -44,8 +44,9 @@ def add_profiles(test_suite):
     
     return Base
 
-def upgrade_testsuite(engine, session, name):
+def upgrade_testsuite(engine, name):
     # Grab Test Suite.
+    session = sqlalchemy.orm.sessionmaker(engine)()
     test_suite = session.query(upgrade_0_to_1.TestSuite).\
                  filter_by(name=name).first()
     assert(test_suite is not None)
@@ -68,10 +69,19 @@ ADD COLUMN "ProfileID" INTEGER
     # during the upgrade process. The commit closes all of the
     # relevant transactions allowing us to then perform our upgrade.
     session.commit()
+
     Base.metadata.create_all(engine)
     # Commit changes (also closing all relevant transactions with
     # respect to Postgres like databases).
     session.commit()
+    session.close()
+
+    with engine.begin() as trans:
+        trans.execute("""
+ALTER TABLE "%s_Sample"
+ADD COLUMN "ProfileID" INTEGER
+""" % (db_key_name,))
+
 
 def upgrade(engine, cb_testsuites):
     # Create a session.
@@ -85,3 +95,4 @@ def upgrade(engine, cb_testsuites):
             upgrade_testsuite(engine, session, testsuite['name'])
         except:
             pass
+

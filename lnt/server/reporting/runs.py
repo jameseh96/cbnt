@@ -12,19 +12,17 @@ from lnt.testing.util.commands import visible_note
 STABILITY_THRESHOLD = 10
 
 
-def generate_run_report(run, baseurl, only_html_body=False,
-                        num_comparison_runs=0, result=None,
-                        compare_to=None, baseline=None,
-                        aggregation_fn=lnt.util.stats.median, confidence_lv=.05,
-                        styles=dict(), classes=dict(), cv=False):
-    """
-    generate_run_report(...) -> (str: subject, str: text_report,
-                                 str: html_report)
 
-    Generate a comprehensive report on the results of the given individual
-    run, suitable for emailing or presentation on a web page.
-    """
+def generate_run_data(run, baseurl, num_comparison_runs=0, result=None,
+                      compare_to=None, baseline=None,
+                      aggregation_fn=lnt.util.stats.safe_min,
+                      confidence_lv=.05, styles=dict(), classes=dict(), cv=False):
 
+    """
+    Generate raw data for a report on the results of the given individual
+    run. They are meant as inputs to jinja templates which could create
+    email reports or presentations on a web page.
+    """
     assert num_comparison_runs >= 0
 
     start_time = time.time()
@@ -202,6 +200,7 @@ def generate_run_report(run, baseurl, only_html_body=False,
     styles_.update(styles)
     classes_.update(classes)
 
+<<<<<<< HEAD
     # Create an environment for rendering the reports.
     env = lnt.server.ui.app.create_jinja_environment()
 
@@ -253,6 +252,31 @@ def generate_run_report(run, baseurl, only_html_body=False,
         start_time=start_time)
 
     return subject, text_report, html_report, sri
+=======
+    data = {
+        'ts': ts,
+        'subject': subject,
+        'report_url': report_url,
+        'ts_url': ts_url,
+        'compare_to': compare_to,
+        'run': run,
+        'run_url': run_url,
+        'baseline': baseline,
+        'machine': machine,
+        'machine_parameters': machine_parameters,
+        'num_item_buckets': num_item_buckets,
+        'num_total_tests': num_total_tests,
+        'run_to_run_info': run_to_run_info,
+        'prioritized_buckets_run_over_run': prioritized_buckets_run_over_run,
+        'run_to_baseline_info': run_to_baseline_info,
+        'prioritized_buckets_run_over_baseline': prioritized_buckets_run_over_baseline,
+        'styles': styles_,
+        'classes': classes_,
+        'start_time': start_time,
+        'sri': sri,
+    }
+    return data
+>>>>>>> runs: Refactor generate_run_report; NFC
 
 
 def _get_changes_by_type(ts, run_a, run_b, metric_fields, test_names,

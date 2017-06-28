@@ -17,3 +17,4 @@ WTForms==2.0.2
 Flask-WTF==0.12
 xmltodict
 typing
+click==6.7

@@ -56,9 +56,8 @@ def getReport(result, db, run, baseurl, was_added, will_commit,
                                                        cv=cv)
 
     env = lnt.server.ui.app.create_jinja_environment()
-    text_template = env.get_template('reporting/runs.txt')
+    text_template = env.get_template('reporting/run_report.txt')
     text_report = text_template.render(data)
-    data['only_html_body'] = False
-    html_template = env.get_template('reporting/runs.html')
+    html_template = env.get_template('reporting/run_report.html')
     html_report = html_template.render(data)
     return data['subject'], text_report, html_report

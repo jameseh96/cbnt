@@ -36,9 +36,8 @@ def add_baselines(test_suite):
     return base
 
 
-def upgrade_testsuite(engine, name):
+def upgrade_testsuite(engine, session, name):
     # Grab Test Suite.
-    session = sqlalchemy.orm.sessionmaker(engine)()
     test_suite = session.query(upgrade_0_to_1.TestSuite). \
         filter_by(name=name).first()
     assert (test_suite is not None)
@@ -52,7 +51,13 @@ def upgrade_testsuite(engine, name):
     session.close()
 
 
-def upgrade(engine):
-    # Create our FieldChangeField table and commit.
-    upgrade_testsuite(engine, 'nts')
-    upgrade_testsuite(engine, 'compile')
+def upgrade(engine, cb_testsuites):
+    # Create a session.
+    session = sqlalchemy.orm.sessionmaker(engine)()
+
+    for testsuite in cb_testsuites:
+        try:
+            upgrade_testsuite(engine, session, testsuite['name'])
+        except Exception as e:
+            print(e)
+            pass

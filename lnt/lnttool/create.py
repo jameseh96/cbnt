@@ -138,7 +138,8 @@ LNT configuration.
 
     basepath = os.path.abspath(instance_path)
     if os.path.exists(basepath):
-        raise SystemExit("error: invalid path: %r already exists" % basepath)
+        raise SystemExit("error: invalid path: {} already exists".
+                         format(basepath))
 
     hosturl = "http://%s/%s" % (hostname, hostsuffix)
 

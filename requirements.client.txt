@@ -18,3 +18,4 @@ Flask-WTF==0.12
 xmltodict
 typing
 click==6.7
+pyyaml==3.12

@@ -199,21 +199,6 @@ class V4DB(object):
             self._testsuite_proxy = V4DB.TestSuiteAccessor(self)
         return self._testsuite_proxy
 
-    # FIXME: The getNum...() methods below should be phased out once we can
-    # eliminate the v0.3 style databases.
-    def getNumMachines(self):
-        return sum([ts.query(ts.Machine).count()
-                    for ts in self.testsuite.values()])
-    def getNumRuns(self):
-        return sum([ts.query(ts.Run).count()
-                    for ts in self.testsuite.values()])
-    def getNumSamples(self):
-        return sum([ts.query(ts.Sample).count()
-                    for ts in self.testsuite.values()])
-    def getNumTests(self):
-        return sum([ts.query(ts.Test).count()
-                    for ts in self.testsuite.values()])
-
 
     def importDataFromDict(self, data, commit, testsuite_schema, config=None, cv=False):
         print("v4db: importDataFromDict")
@@ -230,3 +215,4 @@ class V4DB(object):
 
         print("v4db: Calling db.importDataFromDict")
         return db.importDataFromDict(data, commit, config, cv=cv)
+

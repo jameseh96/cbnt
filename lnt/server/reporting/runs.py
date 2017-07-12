@@ -6,7 +6,6 @@ import time
 import lnt.server.reporting.analysis
 import lnt.server.ui.app
 import lnt.util.stats
-from lnt.testing.util.commands import visible_note
 
 STABILITY_THRESHOLD = 10
 
@@ -36,9 +35,10 @@ def generate_run_data(run, baseurl, num_comparison_runs=0, result=None,
         baseline = machine.get_baseline_run()
 
     # If the baseline is the same as the comparison run, ignore it.
+    visible_note = None
     if baseline is compare_to:
-        visible_note("Baseline and compare_to are the same: "
-                     "disabling baseline.")
+        visible_note = "Baseline and compare_to are the same: " \
+                       "disabling baseline."
         baseline = None
 
     # Gather the runs to use for statistical data.
@@ -230,7 +230,8 @@ def generate_run_data(run, baseurl, num_comparison_runs=0, result=None,
         'classes': classes_,
         'start_time': start_time,
         'sri': sri,
-        'html_template': html_template
+        'html_template': html_template,
+        'visible_note': visible_note,
     }
     return data
 

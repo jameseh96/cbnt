@@ -11,6 +11,7 @@ import os
 import urllib2
 from collections import OrderedDict
 
+import aniso8601
 import sqlalchemy
 from flask import session
 from sqlalchemy import *
@@ -1218,17 +1219,25 @@ class TestSuiteDB(object):
         run_parameters.pop('id', None)
 
         # Find the order record.
-        order,inserted = self._getOrCreateOrder(run_parameters, cv=cv)
+        order, inserted = self._getOrCreateOrder(run_parameters, cv=cv)
 
-        start_time = datetime.datetime.strptime(run_data['start_time'],
-                                                "%Y-%m-%d %H:%M:%S")
-        end_time = datetime.datetime.strptime(run_data['end_time'],
-                                              "%Y-%m-%d %H:%M:%S")
+        # We'd like ISO8061 timestamps, but will also accept the old format.
+        try:
+            start_time = aniso8601.parse_datetime(run_data['start_time'])
+        except ValueError:
+            start_time = datetime.datetime.strptime(run_data['start_time'],
+                                                    "%Y-%m-%d %H:%M:%S")
+
+        try:
+            end_time = aniso8601.parse_datetime(run_data['end_time'])
+        except ValueError:
+            end_time = datetime.datetime.strptime(run_data['end_time'],
+                                                  "%Y-%m-%d %H:%M:%S")
         run_parameters.pop('start_time')
         run_parameters.pop('end_time')
 
         # Convert the rundata into a run record. As with Machines, we construct
-        # the query to look for any existingrun at the same time as we build up
+        # the query to look for any existing run at the same time as we build up
         # the record to possibly add.
         #
         # FIXME: This feels inelegant, can't SA help us out here?

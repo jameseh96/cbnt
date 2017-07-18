@@ -116,8 +116,8 @@ def import_and_report(config, db_name, db, file, format, ts_name,
     if not disable_report:
         #  This has the side effect of building the run report for
         #  this result.
-        NTEmailReport.emailReport(result, db, run, report_url,
-                                  email_config, toAddress, success, commit, cv=cv)
+        NTEmailReport.emailReport(result, db, run, report_url, email_config,
+                                  toAddress, success, cv=cv)
 
     result['added_machines'] = ts.getNumMachines() - numMachines
     result['added_runs'] = ts.getNumRuns() - numRuns

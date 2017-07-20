@@ -1220,6 +1220,9 @@ class TestSuiteDB(object):
         # Ignore incoming ids; we will create our own
         run_parameters.pop('id', None)
 
+        # Added by REST API, we will replace as well.
+        run_parameters.pop('order_by', None)
+
         # Find the order record.
         order, inserted = self._getOrCreateOrder(run_parameters, cv=cv)
 

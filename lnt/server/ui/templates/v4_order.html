@@ -4,6 +4,7 @@
 {% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
 {% block title %}Master Order: {{order.id}}{% endblock %}
 
+
 {% block sidebar %}
   <ul class="nav nav-list bs-docs-sidenav">
     <li><a href="#fields"><i class="icon-chevron-right"></i> Fields</a></li>
@@ -15,14 +16,14 @@
   {# Provide links to the previous and next orders. #}
   <ul class="pager">
     {% if order.previous_order_id is not none %}
-      <li class="previous"><a href="{{v4_url_for('v4_order', id=order.previous_order_id)}}">
+      <li class="previous"><a href="{{v4_url_for('.v4_order', id=order.previous_order_id)}}">
     {% else %}
       <li class="previous disabled"><a href="#">
     {% endif %}
     ← Previous</a></li>
 
     {% if order.next_order_id is not none %}
-      <li class="next" ><a href="{{v4_url_for('v4_order', id=order.next_order_id)}}">
+      <li class="next" ><a href="{{v4_url_for('.v4_order', id=order.next_order_id)}}">
     {% else %}
       <li class="next disabled"><a href="#">
     {% endif %}
@@ -53,7 +54,7 @@
       <tr>
         <td>Previous Order</td>
           <td>
-              <a href="{{ v4_url_for("v4_order", id=order.previous_order_id) }}">
+              <a href="{{ v4_url_for(".v4_order", id=order.previous_order_id) }}">
                   {{order.previous_order_id}}
               </a>
           </td>
@@ -69,7 +70,7 @@
       {% if order.next_order_id %}
       <tr>
         <td>Next Order</td>
-          <td><a href="{{ v4_url_for("v4_order", id=order.next_order_id) }}">{{order.next_order_id}}</a></td>
+          <td><a href="{{ v4_url_for(".v4_order", id=order.next_order_id) }}">{{order.next_order_id}}</a></td>
           {% set next_order = ts.query(ts.Order).filter(ts.Order.id == order.next_order_id).one() %}
           {% for field in next_order.fields %}
                 <td>{{next_order.get_field(field)}}</td>

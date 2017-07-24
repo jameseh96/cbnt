@@ -1164,8 +1164,10 @@ def v4_graph():
             return abort(400)
 
         try:
-            run = ts.query(ts.Run).join(ts.Machine).filter(
-                ts.Run.id == run_id).one()
+            run = ts.query(ts.Run) \
+                .options(joinedload(ts.Run.machine)) \
+                .filter(ts.Run.id == run_id) \
+                .one()
         except:
             err_msg = "The run {} was not found in the database.".format(
                 run_id)

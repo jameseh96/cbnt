@@ -1,28 +1,15 @@
 # Version 4 of the database adds the bigger_is_better column to StatusField.
 
-import os
-import sys
+from sqlalchemy import Column, Integer
 
-import sqlalchemy
-
-
-###
-# Upgrade TestSuite
+from lnt.server.db.migrations.util import introspect_table, add_column
 
 
 def upgrade(engine, _):
-    # Add our new column. SQLAlchemy doesn't really support adding a new
-    # column to an existing table, so instead of requiring SQLAlchemy-Migrate,
-    # just execute the raw SQL.
-    try:
-        with engine.begin() as trans:
-            trans.execute("""
-    ALTER TABLE "TestSuiteSampleFields"
-    ADD COLUMN "bigger_is_better" INTEGER DEFAULT 0
-    """)
-            trans.execute("""
-            ALTER TABLE "TestSuiteCVSampleFields"
-            ADD COLUMN "bigger_is_better" INTEGER DEFAULT 0
-            """)
-    except:
-        pass
+    bigger_is_better = Column('bigger_is_better', Integer, default=0)
+    test_suite_sample_fields = introspect_table(engine,
+                                                'TestSuiteSampleFields')
+    add_column(engine, test_suite_sample_fields, bigger_is_better)
+    test_suite_sample_fields_cv = introspect_table(engine,
+                                                'TestSuiteCVSampleFields')
+    add_column(engine, test_suite_sample_fields_cv, bigger_is_better)

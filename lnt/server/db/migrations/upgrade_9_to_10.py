@@ -1,12 +1,13 @@
-# Version 10 adds Gerrit Change IDs
+# Version 10 adds Gerrit Change IDs (and some other stuff from LNT itself)
 
 import sqlalchemy
 from sqlalchemy import *
 from sqlalchemy.schema import Index
 from sqlalchemy.orm import relation
-
+from sqlalchemy import update, Column, Float
 import lnt.server.db.migrations.upgrade_0_to_1 as upgrade_0_to_1
 import lnt.server.db.migrations.upgrade_2_to_3 as upgrade_2_to_3
+from lnt.server.db.migrations.util import add_column, introspect_table
 
 
 def add_gerrit_ids(test_suite):
@@ -70,3 +71,22 @@ def upgrade(engine, cb_testsuites):
         except Exception as e:
             print(e)
             pass
+    session.close()
+
+    test_suite_sample_fields = introspect_table(engine, 'TestSuiteSampleFields')
+    test_suite_sample_fields_cv = introspect_table(engine, 'TestSuiteCVSampleFields')
+    update_code_size = update(test_suite_sample_fields) \
+        .where(test_suite_sample_fields.c.Name == "code_size") \
+        .values(bigger_is_better=0)
+    update_code_size_cv = update(test_suite_sample_fields_cv) \
+        .where(test_suite_sample_fields_cv.c.Name == "code_size") \
+        .values(bigger_is_better=0)
+    # upgrade_3_to_4.py added this column, so it is not in the ORM.
+
+    with engine.begin() as trans:
+        trans.execute(update_code_size)
+        trans.execute(update_code_size_cv)
+
+        nt_sample = introspect_table(engine, 'NT_Sample')
+        code_size = Column('code_size', Float)
+        add_column(engine, nt_sample, code_size)

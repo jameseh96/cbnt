@@ -14,7 +14,7 @@ import time
 def import_and_report(config, db_name, db, file, format, ts_name,
                       commit=False, show_sample_count=False,
                       disable_email=False, disable_report=False,
-                      updateMachine=False):
+                      updateMachine=False, mergeRun='replace'):
     """
     import_and_report(config, db_name, db, file, format, ts_name,
                       [commit], [show_sample_count],
@@ -92,8 +92,10 @@ def import_and_report(config, db_name, db, file, format, ts_name,
                                (data_schema, ts_name))
             return result
 
-        success, run = ts.importDataFromDict(data, commit, config=db_config,
-                                             updateMachine=updateMachine, cv=cv)
+        run = ts.importDataFromDict(data, commit, config=db_config,
+                                    updateMachine=updateMachine,
+                                    mergeRun=mergeRun, cv=cv)
+
     except KeyboardInterrupt:
         raise
     except Exception as e:
@@ -106,9 +108,6 @@ def import_and_report(config, db_name, db, file, format, ts_name,
     run.imported_from = file
 
     result['import_time'] = time.time() - importStartTime
-    if not success:
-        # Record the original run this is a duplicate of.
-        result['original_run'] = run.id
 
     reportStartTime = time.time()
     result['report_to_address'] = toAddress
@@ -124,7 +123,7 @@ def import_and_report(config, db_name, db, file, format, ts_name,
         #  This has the side effect of building the run report for
         #  this result.
         NTEmailReport.emailReport(result, db, run, report_url, email_config,
-                                  toAddress, success, cv=cv)
+                                  toAddress, True, cv=cv)
 
     result['added_machines'] = ts.getNumMachines() - numMachines
     result['added_runs'] = ts.getNumRuns() - numRuns
@@ -329,7 +328,7 @@ def print_report_result(result, out, err, verbose = True):
     print >>out
 
 def import_from_string(config, db_name, db, ts_name, data, commit=True,
-                       updateMachine=False):
+                       updateMachine=False, mergeRun='replace'):
     # Stash a copy of the raw submission.
     #
     # To keep the temporary directory organized, we keep files in
@@ -357,5 +356,6 @@ def import_from_string(config, db_name, db, ts_name, data, commit=True,
     # should at least reject overly large inputs.
 
     result = lnt.util.ImportData.import_and_report(config, db_name, db,
-            path, '<auto>', ts_name, commit, updateMachine=updateMachine)
+        path, '<auto>', ts_name, commit, updateMachine=updateMachine,
+        mergeRun=mergeRun)
     return result

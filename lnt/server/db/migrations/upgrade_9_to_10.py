@@ -73,8 +73,11 @@ def upgrade(engine, cb_testsuites):
             pass
     session.close()
 
-    test_suite_sample_fields = introspect_table(engine, 'TestSuiteSampleFields')
-    test_suite_sample_fields_cv = introspect_table(engine, 'TestSuiteCVSampleFields')
+    test_suite_sample_fields = introspect_table(engine,
+                                                'TestSuiteSampleFields')
+    test_suite_sample_fields_cv = introspect_table(engine,
+                                                   'TestSuiteCVSampleFields')
+
     update_code_size = update(test_suite_sample_fields) \
         .where(test_suite_sample_fields.c.Name == "code_size") \
         .values(bigger_is_better=0)

@@ -1,6 +1,7 @@
 # Version 0 is an empty database.
 #
-# Version 1 is the schema state at the time when we started doing DB versioning.
+# Version 1 is the schema state at the time when we started doing DB
+# versioning.
 
 import sqlalchemy
 from sqlalchemy import *
@@ -12,6 +13,7 @@ Base = sqlalchemy.ext.declarative.declarative_base()
 
 ###
 # Core Schema
+
 
 class SampleType(Base):
     __tablename__ = 'SampleType'
@@ -38,6 +40,7 @@ class TestSuite(Base):
     cv_order_fields = relation('CVOrderField', backref='test_suite')
     cv_run_fields = relation('CVRunField', backref='test_suite')
     cv_sample_fields = relation('CVSampleField', backref='test_suite')
+
 
 
 class MachineField(Base):
@@ -140,12 +143,14 @@ def initialize_couchbase_definition(engine, session, name, key_name):
     status_sample_type = session.query(SampleType). \
         filter_by(name="Status").first()
 
+
     # Create a test suite compile with "lnt runtest nt".
     ts = TestSuite(name=name, db_key_name=key_name)
 
     # Promote the natural information produced by 'runtest nt' to fields.
-    ts.machine_fields.append(
-        MachineField(name="hardware", info_key="hardware"))
+    ts.machine_fields.append(MachineField(name="hardware",
+                                          info_key="hardware"))
+
     ts.machine_fields.append(MachineField(name="os", info_key="os"))
 
     # The only reliable order currently is the "run_order" field. We will want
@@ -194,19 +199,20 @@ def initialize_memcached_definition(engine, session):
 ###
 # Compile Testsuite Definition
 
+
 def initialize_compile_definition(engine, session):
     # Fetch the sample types.
-    real_sample_type = session.query(SampleType). \
-        filter_by(name="Real").first()
-    status_sample_type = session.query(SampleType). \
-        filter_by(name="Status").first()
+    real_sample_type = session.query(SampleType) \
+        .filter_by(name="Real").first()
+    status_sample_type = session.query(SampleType) \
+        .filter_by(name="Status").first()
 
     # Create a test suite compile with "lnt runtest compile".
     ts = TestSuite(name="compile", db_key_name="Compile")
 
     # Promote some natural information to fields.
-    ts.machine_fields.append(
-        MachineField(name="hardware", info_key="hw.model"))
+    ts.machine_fields.append(MachineField(name="hardware",
+                                          info_key="hw.model"))
     ts.machine_fields.append(MachineField(name="os_version",
                                           info_key="kern.version"))
 
@@ -236,9 +242,9 @@ def initialize_compile_definition(engine, session):
 ###
 # Per-Testsuite Table Schema
 
+
 def get_base_for_testsuite(test_suite):
     Base = sqlalchemy.ext.declarative.declarative_base()
-
     db_key_name = test_suite.db_key_name
 
     class Machine(Base):
@@ -252,8 +258,8 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.machine_fields:
             if item.name in class_dict:
-                raise ValueError, "test suite defines reserved key %r" % (
-                    name,)
+                raise ValueError("test suite defines reserved key %r" %
+                                 (name,))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
@@ -271,8 +277,8 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.order_fields:
             if item.name in class_dict:
-                raise ValueError, "test suite defines reserved key %r" % (
-                    name,)
+                raise ValueError("test suite defines reserved key %r" %
+                                 (name,))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
@@ -298,8 +304,8 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.run_fields:
             if item.name in class_dict:
-                raise ValueError, "test suite defines reserved key %r" % (
-                    name,)
+                raise ValueError("test suite defines reserved key %r" %
+                 (name,))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
@@ -426,8 +432,6 @@ def initialize_testsuite(engine, session, name):
     # checking if they already exist, SA will handle that for us.
     base = get_base_for_testsuite(defn).metadata.create_all(engine)
 
-
-###
 
 def upgrade(engine, cb_testsuites):
     # This upgrade script is special in that it needs to handle databases "in

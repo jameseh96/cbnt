@@ -10,7 +10,8 @@ def update_testsuite(engine, session, db_key_name):
 
     meta = sqlalchemy.MetaData(bind=engine)
 
-    machine_table = sqlalchemy.Table("%s_Machine" % db_key_name, meta, autoload=True)
+    machine_table = sqlalchemy.Table("%s_Machine" % db_key_name, meta,
+                                     autoload=True)
     sqlalchemy.orm.mapper(Machine, machine_table)
 
     all_machines = session.query(Machine)
@@ -23,6 +24,7 @@ def update_testsuite(engine, session, db_key_name):
 
     session.commit()
     session.close()
+
 
 def upgrade(engine, cb_testsuites):
     # Create a session.

@@ -277,7 +277,8 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.order_fields:
             if item.name in class_dict:
-                raise ValueError,"test suite defines reserved key %r" % (item.name,)
+                raise ValueError("test suite defines reserved key %r" % (
+                    item.name,))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
@@ -303,7 +304,7 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.run_fields:
             if item.name in class_dict:
-                raise ValueError, "test suite defines reserved key %r" % (item.name,)
+                raise ValueError("test suite defines reserved key %r" % (item.name))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
@@ -316,7 +317,7 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.cv_order_fields:
             if item.name in class_dict:
-                raise ValueError, "test suite defines reserved key %r" % (item.name,)
+                raise ValueError("test suite defines reserved key %r" % (item.name))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))
@@ -342,7 +343,8 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.cv_run_fields:
             if item.name in class_dict:
-                raise ValueError,"test suite defines reserved key %r" % (item.name,)
+                raise ValueError("test suite defines reserved key %r" % (
+                    item.name))
 
             class_dict[item.name] = item.column = Column(
                 item.name, String(256))

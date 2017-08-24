@@ -156,15 +156,6 @@ class V4DB(object):
         self.SampleField = testsuite.SampleField
         self.CVSampleField = testsuite.CVSampleField
 
-        # Resolve or create the known status kinds.
-        kinds = {k.id: k for k in self.query(testsuite.StatusKind).all()}
-        try:
-            self.pass_status_kind = kinds[lnt.testing.PASS]
-            self.fail_status_kind = kinds[lnt.testing.FAIL]
-            self.xfail_status_kind = kinds[lnt.testing.XFAIL]
-        except KeyError:
-                fatal("status kinds not initialized!")
-
         self._load_shemas()
 
     def close(self):

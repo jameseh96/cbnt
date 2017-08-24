@@ -2,7 +2,8 @@
 
 import sqlalchemy
 from sqlalchemy import *
-from lnt.server.db.migrations.util import add_column, introspect_table
+from lnt.server.db.migrations.util import introspect_table
+from lnt.server.db.util import add_column
 
 ###
 # Upgrade TestSuite
@@ -45,7 +46,5 @@ def upgrade(engine, _):
     with engine.begin() as trans:
         trans.execute(set_mem)
         trans.execute(set_mem_cv)
-
-        nt_sample = introspect_table(engine, 'NT_Sample')
         mem_bytes = Column('mem_bytes', Float)
-        add_column(engine, nt_sample, mem_bytes)
+        add_column(trans, 'NT_Sample', mem_bytes)

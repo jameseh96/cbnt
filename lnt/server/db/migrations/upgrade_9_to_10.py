@@ -7,7 +7,8 @@ from sqlalchemy.orm import relation
 from sqlalchemy import update, Column, Float
 import lnt.server.db.migrations.upgrade_0_to_1 as upgrade_0_to_1
 import lnt.server.db.migrations.upgrade_2_to_3 as upgrade_2_to_3
-from lnt.server.db.migrations.util import add_column, introspect_table
+from lnt.server.db.migrations.util import introspect_table
+from lnt.server.db.util import add_column
 
 
 def add_gerrit_ids(test_suite):
@@ -90,6 +91,5 @@ def upgrade(engine, cb_testsuites):
         trans.execute(update_code_size)
         trans.execute(update_code_size_cv)
 
-        nt_sample = introspect_table(engine, 'NT_Sample')
         code_size = Column('code_size', Float)
-        add_column(engine, nt_sample, code_size)
+        add_column(trans, 'NT_Sample', code_size)

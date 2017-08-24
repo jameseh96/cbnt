@@ -6,7 +6,8 @@ from sqlalchemy import update, Column, Float
 from sqlalchemy.orm import sessionmaker
 
 import lnt.server.db.migrations.upgrade_0_to_1 as upgrade_0_to_1
-from lnt.server.db.migrations.util import add_column, introspect_table
+from lnt.server.db.migrations.util import introspect_table
+from lnt.server.db.util import add_column
 
 
 def upgrade(engine, _):
@@ -43,6 +44,5 @@ def upgrade(engine, _):
         trans.execute(set_scores)
         trans.execute(set_scores_cv)
         # Give the NT table a score column.
-        nt_sample = introspect_table(engine, 'NT_Sample')
         score = Column('score', Float)
-        add_column(engine, nt_sample, score)
+        add_column(trans, 'NT_Sample', score)

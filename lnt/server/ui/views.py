@@ -182,6 +182,7 @@ def ts_data(ts):
         'ts': ts
     }
 
+
 @db_route('/submitRun', methods=('GET', 'POST'))
 def submit_run():
     """Compatibility url that hardcodes testsuite to 'nts'"""
@@ -1384,8 +1385,8 @@ def v4_graph():
               .group_by(ts.Order.llvm_project_revision, ts.Test)
 
         # Calculate geomean of each revision.
-        data = multidict.multidict(((rev, date), val) for val, rev, date in q) \
-               .items()
+        data = multidict.multidict(
+                    ((rev, date), val) for val, rev, date in q).items()
         data = [(rev,
                  [(lnt.server.reporting.analysis.calc_geomean(vals), date)])
                 for ((rev, date), vals) in data]

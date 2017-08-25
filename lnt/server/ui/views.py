@@ -51,6 +51,7 @@ from lnt.server.ui.util import FLASH_DANGER, FLASH_SUCCESS, FLASH_INFO
 from lnt.server.ui.util import mean
 from lnt.util import async_ops
 from lnt.util import logger
+from lnt.util import multidict
 from lnt.server.ui.util import baseline_key, convert_revision
 
 integral_rex = re.compile(r"[\d]+")
@@ -286,7 +287,7 @@ def v4_machine(id):
     # Gather all the runs on this machine.
     ts = request.get_testsuite()
 
-    master_runs = util.multidict(
+    master_runs = multidict.multidict(
         (run_order, r)
         for r, run_order in (ts.query(ts.Run, ts.Order)
                              .join(ts.Order)
@@ -295,7 +296,7 @@ def v4_machine(id):
     master_runs = master_runs.items()
     master_runs.sort()
 
-    cv_runs = util.multidict(
+    cv_runs = multidict.multidict(
         (run_order, r)
         for r, run_order in ts.query(ts.CVRun, ts.CVOrder). \
             join(ts.CVOrder).
@@ -1267,7 +1268,7 @@ def v4_graph():
                              (field.status_field.column.is_(None)))
 
         # Aggregate by revision.
-        data = util.multidict(
+        data = multidict.multidict(
             (rev, (val, date, run_id)) for val, rev, date, run_id in q).items()
 
         # If CV result, add it to the data points
@@ -1343,8 +1344,8 @@ def v4_graph():
               .group_by(ts.Order.llvm_project_revision, ts.Test)
 
         # Calculate geomean of each revision.
-        data = util.multidict(((rev, date), val) for val, rev, date in q) \
-            .items()
+        data = multidict.multidict(((rev, date), val) for val, rev, date in q) \
+               .items()
         data = [(rev,
                  [(lnt.server.reporting.analysis.calc_geomean(vals), date)])
                 for ((rev, date), vals) in data]
@@ -1621,7 +1622,7 @@ def v4_global_status():
     recent_runs = ts.query(ts.Run).filter(ts.Run.start_time > yesterday).all()
 
     # Aggregate the runs by machine.
-    recent_runs_by_machine = util.multidict()
+    recent_runs_by_machine = multidict.multidict()
     for run in recent_runs:
         recent_runs_by_machine[run.machine] = run
 

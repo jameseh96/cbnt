@@ -46,8 +46,8 @@ import lnt.server.reporting.summaryreport
 import lnt.server.db.rules_manager
 import lnt.server.db.search
 from lnt.server.ui.globals import db_url_for, v4_url_for
-from lnt.server.ui.regression_views import PrecomputedCR
 from lnt.server.ui.util import FLASH_DANGER, FLASH_SUCCESS, FLASH_INFO
+from lnt.server.ui.util import PrecomputedCR
 from lnt.server.ui.util import mean
 from lnt.util import async_ops
 from lnt.util import logger

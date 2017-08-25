@@ -171,6 +171,17 @@ def _do_submit():
     return response
 
 
+def ts_data(ts):
+    """Data about the current testsuite used by layout.html which should be
+    present in most templates."""
+    baseline_id = session.get(baseline_key())
+    baselines = ts.query(ts.Baseline).all()
+    return {
+        'baseline_id': baseline_id,
+        'baselines': baselines,
+        'ts': ts
+    }
+
 @db_route('/submitRun', methods=('GET', 'POST'))
 def submit_run():
     """Compatibility url that hardcodes testsuite to 'nts'"""
@@ -216,6 +227,14 @@ def v4_recent_activity():
         .order_by(ts.Run.start_time.desc()).limit(100)
     recent_master_runs = recent_master_runs.all()
 
+    recent_cv_runs = ts.query(ts.Run) \
+        .join(ts.CVOrder) \
+        .join(ts.Machine) \
+        .options(joinedload(ts.CVRun.order)) \
+        .options(joinedload(ts.CVRun.machine)) \
+        .order_by(ts.CVRun.start_time.desc()).limit(100)
+    recent_cv_runs = recent_cv_runs.all()
+
     # Compute the active machine list.
     active_machines = dict((run.machine.name, run)
                            for run in recent_master_runs[::-1])
@@ -233,7 +252,8 @@ def v4_recent_activity():
                            active_machines=active_machines,
                            active_master_submissions=active_master_submissions,
                            active_cv_submissions=active_cv_submissions,
-                           ts=ts)
+                           ** ts_data(ts))
+
 
 
 @v4_route("/machine/")
@@ -242,9 +262,10 @@ def v4_machines():
 
     # Gather all the runs on this machine.
     ts = request.get_testsuite()
+    machines = ts.query(ts.Machine)
 
-    return render_template("all_machines.html",
-                           ts=ts)
+    return render_template("all_machines.html", machines=machines,
+                           **ts_data(ts))
 
 
 @v4_route("/machine/<int:machine_id>/latest")
@@ -431,6 +452,7 @@ class V4RequestInfo(object):
         note = self.data['visible_note']
         if note:
             flash(note, FLASH_INFO)
+        self.data.update(ts_data(ts))
 
 
 class V4CVRequestInfo(object):
@@ -915,7 +937,25 @@ def v4_order(id):
     if order is None:
         abort(404)
 
-    return render_template("v4_order.html", ts=ts, order=order, form=form)
+    previous_order = None
+    if order.previous_order_id:
+        previous_order = ts.query(ts.Order) \
+            .filter(ts.Order.id == order.previous_order_id).one()
+    next_order = None
+    if order.next_order_id:
+        next_order = ts.query(ts.Order) \
+            .filter(ts.Order.id == order.next_order_id).one()
+
+    runs = ts.query(ts.Run) \
+        .filter(ts.Run.order_id == id) \
+        .options(joinedload(ts.Run.machine)) \
+        .all()
+    num_runs = len(runs)
+
+    return render_template("v4_order.html", order=order, form=form,
+                           previous_order=previous_order,
+                           next_order=next_order, runs=runs, num_runs=num_runs,
+                           **ts_data(ts))
 
 
 @v4_route("/set_baseline/<int:id>")
@@ -956,7 +996,7 @@ def v4_all_orders():
     # Order the runs totally.
     orders.sort()
 
-    return render_template("v4_all_orders.html", ts=ts, orders=orders)
+    return render_template("v4_all_orders.html", orders=orders, **ts_data(ts))
 
 
 @v4_route("/<int:id>/graph")
@@ -1583,11 +1623,12 @@ def v4_graph():
         json_obj['baselines'] = baseline_plots
         return flask.jsonify(**json_obj)
 
-    return render_template("v4_graph.html", ts=ts, options=options,
+    return render_template("v4_graph.html", options=options,
                            revision_range=revision_range,
                            graph_plots=graph_plots,
                            overview_plots=overview_plots, legend=legend,
-                           baseline_plots=baseline_plots)
+                           baseline_plots=baseline_plots,
+                           **ts_data(ts))
 
 
 @v4_route("/global_status")
@@ -1694,12 +1735,12 @@ def v4_global_status():
     test_table.sort(key=lambda row: row[1], reverse=True)
 
     return render_template("v4_global_status.html",
-                           ts=ts,
                            tests=test_table,
                            machines=recent_machines,
                            fields=metric_fields,
                            selected_field=field,
-                           selected_revision=revision)
+                           selected_revision=revision,
+                           **ts_data(ts))
 
 
 @v4_route("/daily_report")
@@ -1758,8 +1799,9 @@ def v4_daily_report(year, month, day):
     except ValueError:
         return abort(400)
 
-    return render_template("v4_daily_report.html", ts=ts, report=report,
-                           analysis=lnt.server.reporting.analysis)
+    return render_template("v4_daily_report.html", report=report,
+                           analysis=lnt.server.reporting.analysis,
+                           **ts_data(ts))
 
 
 ###

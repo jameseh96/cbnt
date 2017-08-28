@@ -1384,7 +1384,8 @@ class TestSuiteDB(object):
     def _importSampleValues(self, tests_data, run, tag, commit, config, cv=False):
         # Load a map of all the tests, which we will extend when we find tests
         # that need to be added.
-        test_cache = dict((test.name, test)
+        # Downcast to str, so we match on MySQL.
+        test_cache = dict((str(test.name), test)
                           for test in self.query(self.Test))
 
         if cv:

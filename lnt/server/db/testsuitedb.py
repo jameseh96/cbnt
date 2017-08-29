@@ -1381,7 +1381,8 @@ class TestSuiteDB(object):
         self.add(run)
         return run
 
-    def _importSampleValues(self, tests_data, run, tag, commit, config, cv=False):
+
+    def _importSampleValues(self, tests_data, run, config, cv=False):
         # Load a map of all the tests, which we will extend when we find tests
         # that need to be added.
         # Downcast to str, so we match on MySQL.
@@ -1428,9 +1429,7 @@ class TestSuiteDB(object):
                     else:
                         sample.set_field(field, value)
 
-
-    def importDataFromDict(self, data, commit, config, updateMachine,
-                           mergeRun, cv=False):
+    def importDataFromDict(self, data, config, updateMachine, mergeRun, cv=False):
         """
         importDataFromDict(data, commit, config, updateMachine, mergeRun)
             -> Run  (or throws ValueError exception)
@@ -1455,7 +1454,7 @@ class TestSuiteDB(object):
         # If we didn't construct a new run, this is a duplicate
         # submission. Return the prior Run.
 
-        self._importSampleValues(data['tests'], run, commit, config)
+        self._importSampleValues(data['tests'], run, config)
 
         return run
 

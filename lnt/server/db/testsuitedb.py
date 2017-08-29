@@ -1433,7 +1433,7 @@ class TestSuiteDB(object):
 
     def importDataFromDict(self, data, config, updateMachine, mergeRun, cv=False):
         """
-        importDataFromDict(data, commit, config, updateMachine, mergeRun)
+        importDataFromDict(data, config, updateMachine, mergeRun)
             -> Run  (or throws ValueError exception)
 
         Import a new run from the provided test interchange data, and return

@@ -328,18 +328,15 @@ def v4_machine(id):
     cv_runs = cv_runs.items()
     cv_runs.sort()
 
-    machines = ts.query(ts.Machine).all()
+    try:
+        machine = ts.query(ts.Machine).filter(ts.Machine.id == id).one()
+    except NoResultFound:
+        abort(404)
 
     if request.args.get('json'):
         json_obj = dict()
-        try:
-            machine_obj = ts.query(ts.Machine) \
-                .filter(ts.Machine.id == id) \
-                .one()
-        except NoResultFound:
-            abort(404)
-        json_obj['name'] = machine_obj.name
-        json_obj['id'] = machine_obj.id
+        json_obj['name'] = machine.name
+        json_obj['id'] = machine.id
         json_obj['master_runs'] = []
         json_obj['cv_runs'] = []
         for order in master_runs:
@@ -357,12 +354,16 @@ def v4_machine(id):
 
         return flask.jsonify(**json_obj)
     try:
+        machines = ts.query(ts.Machine).all()
+        relatives = [m for m in machines if m.name == machine.name]
         return render_template("v4_machine.html",
                                testsuite_name=g.testsuite_name, id=id,
                                master_runs=master_runs, cv_runs=cv_runs,
-                               machines=machines, **ts_data(ts))
+                               machine=machine, machines=machines,
+                               relatives=relatives, **ts_data(ts))
     except NoResultFound:
         abort(404)
+
 
 
 class V4RequestInfo(object):

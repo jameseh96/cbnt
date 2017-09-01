@@ -1392,7 +1392,8 @@ class TestSuiteDB(object):
             sample_type = self.Sample
 
         profiles = dict()
-        field_dict = dict([(f.name, f) for f in sample_fields])
+        field_dict = dict([(str(f.name), f) for f in sample_fields])
+
         for test_data in tests_data:
             name = str(test_data['name'])
             test = test_cache.get(name)

@@ -4,15 +4,16 @@ import sys
 import urllib
 
 import StringIO
-import lnt.server.db.v4db
 import lnt.server.reporting.runs
 
 
-def emailReport(result, db, run, baseurl, email_config, to, was_added=True, cv=False):
+def emailReport(result, session, run, baseurl, email_config, to,
+                was_added=True, cv=False):
     import email.mime.multipart
     import email.mime.text
 
-    subject, report, html_report = _getReport(result, db, run, baseurl, was_added, cv=cv)
+    subject, report, html_report = _getReport(result, session, run, baseurl,
+                                              was_added, cv=cv)
 
     # Ignore if no to address was given, we do things this way because of the
     # awkward way we collect result information as part of generating the email
@@ -43,11 +44,9 @@ def emailReport(result, db, run, baseurl, email_config, to, was_added=True, cv=F
     s.quit()
 
 
-def _getReport(result, db, run, baseurl, was_added, compare_to=None, cv=False):
-    assert isinstance(db, lnt.server.db.v4db.V4DB)
-
+def _getReport(result, session, run, baseurl, was_added, compare_to=None, cv=False):
     data = lnt.server.reporting.runs.generate_run_data(
-        run, baseurl=baseurl, result=result, compare_to=compare_to,
+        session, run, baseurl=baseurl, result=result, compare_to=compare_to,
         num_comparison_runs=10, cv=cv)
 
     env = lnt.server.ui.app.create_jinja_environment()

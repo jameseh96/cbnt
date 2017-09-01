@@ -19,7 +19,6 @@ from flask import make_response
 from flask import redirect
 from flask import render_template
 from flask import request, url_for
-from flask import session
 from flask_wtf import Form
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
@@ -151,11 +150,12 @@ def _do_submit():
         g.testsuite_name = 'nts'
 
     # Get a DB connection.
+    session = request.session
     db = request.get_db()
 
     result = lnt.util.ImportData.import_from_string(
-        current_app.old_config, g.db_name, db, g.testsuite_name, data_value,
-        updateMachine=updateMachine, mergeRun=merge)
+        current_app.old_config, g.db_name, db, session, g.testsuite_name,
+        data_value, updateMachine=updateMachine, mergeRun=merge)
 
     # It is nice to have a full URL to the run, so fixup the request URL
     # here were we know more about the flask instance.
@@ -173,8 +173,8 @@ def _do_submit():
 def ts_data(ts):
     """Data about the current testsuite used by layout.html which should be
     present in most templates."""
-    baseline_id = session.get(baseline_key())
-    baselines = ts.query(ts.Baseline).all()
+    baseline_id = flask.session.get(baseline_key())
+    baselines = request.session.query(ts.Baseline).all()
     return {
         'baseline_id': baseline_id,
         'baselines': baselines,
@@ -217,11 +217,12 @@ def v4_overview():
 
 @v4_route("/recent_activity")
 def v4_recent_activity():
+    session = request.session
     ts = request.get_testsuite()
 
     # Get the most recent runs in this tag, we just arbitrarily limit to
     # looking at the last 100 submission.
-    recent_master_runs = ts.query(ts.Run) \
+    recent_master_runs = session.query(ts.Run) \
         .join(ts.Order) \
         .join(ts.Machine) \
         .options(joinedload(ts.Run.order)) \
@@ -229,7 +230,7 @@ def v4_recent_activity():
         .order_by(ts.Run.start_time.desc()).limit(100)
     recent_master_runs = recent_master_runs.all()
 
-    recent_cv_runs = ts.query(ts.Run) \
+    recent_cv_runs = session.query(ts.Run) \
         .join(ts.CVOrder) \
         .join(ts.Machine) \
         .options(joinedload(ts.CVRun.order)) \
@@ -263,8 +264,9 @@ def v4_machines():
     # Compute the list of associated runs, grouped by order.
 
     # Gather all the runs on this machine.
+    session = request.session
     ts = request.get_testsuite()
-    machines = ts.query(ts.Machine)
+    machines = session.query(ts.Machine)
 
     return render_template("all_machines.html", machines=machines,
                            **ts_data(ts))
@@ -273,9 +275,10 @@ def v4_machines():
 @v4_route("/machine/<int:machine_id>/latest")
 def v4_machine_latest(machine_id):
     """Return the most recent run on this machine."""
+    session = request.session
     ts = request.get_testsuite()
 
-    run = ts.query(ts.Run) \
+    run = session.query(ts.Run) \
         .filter(ts.Run.machine_id == machine_id) \
         .order_by(ts.Run.start_time.desc()) \
         .first()
@@ -285,14 +288,15 @@ def v4_machine_latest(machine_id):
 @v4_route("/machine/<int:machine_id>/compare")
 def v4_machine_compare(machine_id):
     """Return the most recent run on this machine."""
+    session = request.session
     ts = request.get_testsuite()
     machine_compare_to_id = int(request.args['compare_to_id'])
-    machine_1_run = ts.query(ts.Run) \
+    machine_1_run = session.query(ts.Run) \
         .filter(ts.Run.machine_id == machine_id) \
         .order_by(ts.Run.start_time.desc()) \
         .first()
 
-    machine_2_run = ts.query(ts.Run) \
+    machine_2_run = session.query(ts.Run) \
         .filter(ts.Run.machine_id == machine_compare_to_id) \
         .order_by(ts.Run.start_time.desc()) \
         .first()
@@ -308,11 +312,12 @@ def v4_machine(id):
     from lnt.server.ui import util
 
     # Gather all the runs on this machine.
+    session = request.session
     ts = request.get_testsuite()
 
     master_runs = multidict.multidict(
         (run_order, r)
-        for r, run_order in (ts.query(ts.Run, ts.Order)
+        for r, run_order in (session.query(ts.Run, ts.Order)
                              .join(ts.Order)
                              .filter(ts.Run.machine_id == id)
                              .order_by(ts.Run.start_time.desc())))
@@ -329,7 +334,7 @@ def v4_machine(id):
     cv_runs.sort()
 
     try:
-        machine = ts.query(ts.Machine).filter(ts.Machine.id == id).one()
+        machine = session.query(ts.Machine).filter(ts.Machine.id == id).one()
     except NoResultFound:
         abort(404)
 
@@ -354,7 +359,7 @@ def v4_machine(id):
 
         return flask.jsonify(**json_obj)
     try:
-        machines = ts.query(ts.Machine).all()
+        machines = session.query(ts.Machine).all()
         relatives = [m for m in machines if m.name == machine.name]
         return render_template("v4_machine.html",
                                testsuite_name=g.testsuite_name, id=id,
@@ -365,12 +370,13 @@ def v4_machine(id):
         abort(404)
 
 
-
 class V4RequestInfo(object):
     def __init__(self, run_id):
+        session = request.session
         self.db = request.get_db()
+        self.session = session
         self.ts = ts = request.get_testsuite()
-        self.run = run = ts.query(ts.Run).filter_by(id=run_id).first()
+        self.run = run = session.query(ts.Run).filter_by(id=run_id).first()
         if run is None:
             abort(404)
 
@@ -388,8 +394,8 @@ class V4RequestInfo(object):
         self.confidence_lv = confidence_lv
 
         # Find the neighboring runs, by order.
-        prev_runs = list(ts.get_previous_runs_on_machine(run, N=3))
-        next_runs = list(ts.get_next_runs_on_machine(run, N=3))
+        prev_runs = list(ts.get_previous_runs_on_machine(session, run, N=3))
+        next_runs = list(ts.get_next_runs_on_machine(session, run, N=3))
         self.neighboring_runs = next_runs[::-1] + [self.run] + prev_runs
 
         # Select the comparison run as either the previous run, or a user
@@ -397,15 +403,19 @@ class V4RequestInfo(object):
         compare_to_str = request.args.get('compare_to')
         if compare_to_str:
             compare_to_id = int(compare_to_str)
-            compare_to = ts.query(ts.Run).filter_by(id=compare_to_id).first()
+            compare_to = session.query(ts.Run) \
+                .filter_by(id=compare_to_id) \
+                .first()
             if compare_to is None:
                 flash("Comparison Run is invalid: " + compare_to_str,
                       FLASH_DANGER)
             else:
                 self.comparison_neighboring_runs = (
-                    list(ts.get_next_runs_on_machine(compare_to, N=3))[::-1] +
+                    list(ts.get_next_runs_on_machine(session, compare_to,
+                                                     N=3))[::-1] +
                     [compare_to] +
-                    list(ts.get_previous_runs_on_machine(compare_to, N=3)))
+                    list(ts.get_previous_runs_on_machine(session, compare_to,
+                                                         N=3)))
         else:
             if prev_runs:
                 compare_to = prev_runs[0]
@@ -423,7 +433,7 @@ class V4RequestInfo(object):
         baseline_str = request.args.get('baseline')
         if baseline_str:
             baseline_id = int(baseline_str)
-            baseline = ts.query(ts.Run).filter_by(id=baseline_id).first()
+            baseline = session.query(ts.Run).filter_by(id=baseline_id).first()
             if baseline is None:
                 flash("Could not find baseline " + baseline_str, FLASH_DANGER)
         else:
@@ -446,7 +456,7 @@ class V4RequestInfo(object):
         }
 
         self.data = lnt.server.reporting.runs.generate_run_data(
-            self.run, baseurl=db_url_for('.index', _external=True),
+            session, self.run, baseurl=db_url_for('.index', _external=True),
             result=None, compare_to=compare_to, baseline=baseline,
             num_comparison_runs=self.num_comparison_runs,
             aggregation_fn=self.aggregation_fn, confidence_lv=confidence_lv,
@@ -585,7 +595,7 @@ def simple_run(tag, id):
     ts = db.testsuite[tag]
 
     # Look for a matched run.
-    matched_run = ts.query(ts.Run). \
+    matched_run = session.query(ts.Run). \
         filter(ts.Run.simple_run_id == id). \
         first()
 
@@ -604,6 +614,7 @@ Unable to find a run for this ID. Please use the native v4 URL interface
 def v4_run(id):
     info = V4RequestInfo(id)
 
+    session = info.session
     ts = info.ts
     run = info.run
 
@@ -641,7 +652,7 @@ def v4_run(id):
     options['aggregation_fn'] = request.args.get('aggregation_fn', 'median')
 
     # Get the test names.
-    test_info = ts.query(ts.Test.name, ts.Test.id). \
+    test_info = session.query(ts.Test.name, ts.Test.id).\
         order_by(ts.Test.name).all()
 
     # Filter the list of tests by name, if requested.
@@ -653,9 +664,9 @@ def v4_run(id):
     if request.args.get('json'):
         json_obj = dict()
 
-        sri = lnt.server.reporting.analysis.RunInfo(ts, [id])
-        reported_tests = ts.query(ts.Test.name, ts.Test.id). \
-            filter(ts.Run.id == id). \
+        sri = lnt.server.reporting.analysis.RunInfo(session, ts, [id])
+        reported_tests = session.query(ts.Test.name, ts.Test.id).\
+            filter(ts.Run.id == id).\
             filter(ts.Test.id.in_(sri.test_ids)).all()
         order = run.order.as_ordered_string()
 
@@ -898,28 +909,29 @@ class PromoteOrderToBaseline(Form):
 def v4_order(id):
     """Order page details order information, as well as runs that are in this
     order as well setting this run as a baseline."""
+    session = request.session
     ts = request.get_testsuite()
     form = PromoteOrderToBaseline()
 
     if form.validate_on_submit():
         try:
-            baseline = ts.query(ts.Baseline) \
+            baseline = session.query(ts.Baseline) \
                 .filter(ts.Baseline.order_id == id) \
                 .one()
         except NoResultFound:
             baseline = ts.Baseline()
 
         if form.demote.data:
-            ts.session.delete(baseline)
-            ts.session.commit()
+            session.delete(baseline)
+            session.commit()
 
             flash("Baseline demoted.", FLASH_SUCCESS)
         else:
             baseline.name = form.name.data
             baseline.comment = form.description.data
             baseline.order_id = id
-            ts.session.add(baseline)
-            ts.session.commit()
+            session.add(baseline)
+            session.commit()
 
             flash("Baseline {} updated.".format(baseline.name), FLASH_SUCCESS)
         return redirect(v4_url_for(".v4_order", id=id))
@@ -927,7 +939,7 @@ def v4_order(id):
         print form.errors
 
     try:
-        baseline = ts.query(ts.Baseline) \
+        baseline = session.query(ts.Baseline) \
             .filter(ts.Baseline.order_id == id) \
             .one()
         form.name.data = baseline.name
@@ -936,20 +948,20 @@ def v4_order(id):
         pass
 
     # Get the order.
-    order = ts.query(ts.Order).filter(ts.Order.id == id).first()
+    order = session.query(ts.Order).filter(ts.Order.id == id).first()
     if order is None:
         abort(404)
 
     previous_order = None
     if order.previous_order_id:
-        previous_order = ts.query(ts.Order) \
+        previous_order = session.query(ts.Order) \
             .filter(ts.Order.id == order.previous_order_id).one()
     next_order = None
     if order.next_order_id:
-        next_order = ts.query(ts.Order) \
+        next_order = session.query(ts.Order) \
             .filter(ts.Order.id == order.next_order_id).one()
 
-    runs = ts.query(ts.Run) \
+    runs = session.query(ts.Run) \
         .filter(ts.Run.order_id == id) \
         .options(joinedload(ts.Run.machine)) \
         .all()
@@ -964,12 +976,13 @@ def v4_order(id):
 @v4_route("/set_baseline/<int:id>")
 def v4_set_baseline(id):
     """Update the baseline stored in the user's session."""
+    session = request.session
     ts = request.get_testsuite()
-    base = ts.query(ts.Baseline).get(id)
+    base = session.query(ts.Baseline).get(id)
     if not base:
         return abort(404)
     flash("Baseline set to " + base.name, FLASH_SUCCESS)
-    session[baseline_key()] = id
+    flask.session[baseline_key()] = id
 
     return redirect(get_redirect_target())
 
@@ -991,10 +1004,11 @@ def v4_cv_order(id):
 @v4_route("/all_orders")
 def v4_all_orders():
     # Get the testsuite.
+    session = request.session
     ts = request.get_testsuite()
 
     # Get the orders.
-    orders = ts.query(ts.Order).all()
+    orders = session.query(ts.Order).all()
 
     # Order the runs totally.
     orders.sort()
@@ -1007,8 +1021,9 @@ def v4_run_graph(id):
     # This is an old style endpoint that treated graphs as associated with
     # runs. Redirect to the new endpoint.
 
+    session = request.session
     ts = request.get_testsuite()
-    run = ts.query(ts.Run).filter_by(id=id).first()
+    run = session.query(ts.Run).filter_by(id=id).first()
     if run is None:
         abort(404)
 
@@ -1088,8 +1103,9 @@ def v4_graph_for_sample(sample_id, field_name):
     :return: a redirect to the graph page for that sample and field.
 
     """
+    session = request.session
     ts = request.get_testsuite()
-    target_sample = ts.query(ts.Sample).get(sample_id)
+    target_sample = session.query(ts.Sample).get(sample_id)
     if not target_sample:
         abort(404, "Could not find sample id: {}".format(sample_id))
 
@@ -1120,25 +1136,28 @@ def v4_graph():
     from lnt.util import stats
     from lnt.external.stats import stats as ext_stats
 
+    session = request.session
     ts = request.get_testsuite()
     switch_min_mean_local = False
 
-    if 'switch_min_mean_session' not in session:
-        session['switch_min_mean_session'] = False
+    if 'switch_min_mean_session' not in flask.session:
+        flask.session['switch_min_mean_session'] = False
     # Parse the view options.
     options = {'min_mean_checkbox': 'min()'}
     if 'submit' in request.args:  # user pressed a button
         if 'switch_min_mean' in request.args:  # user checked mean() checkbox
-            session['switch_min_mean_session'] = options['switch_min_mean'] = \
+            flask.session['switch_min_mean_session'] = \
+                options['switch_min_mean'] = \
                 bool(request.args.get('switch_min_mean'))
-            switch_min_mean_local = session['switch_min_mean_session']
+            switch_min_mean_local = flask.session['switch_min_mean_session']
         else:  # mean() check box is not checked
-            session['switch_min_mean_session'] = options['switch_min_mean'] = \
+            flask.session['switch_min_mean_session'] = \
+                options['switch_min_mean'] = \
                 bool(request.args.get('switch_min_mean'))
-            switch_min_mean_local = session['switch_min_mean_session']
+            switch_min_mean_local = flask.session['switch_min_mean_session']
     else:  # new page was loaded by clicking link, not submit button
         options['switch_min_mean'] = switch_min_mean_local = \
-            session['switch_min_mean_session']
+            flask.session['switch_min_mean_session']
 
     options['hide_lineplot'] = bool(request.args.get('hide_lineplot'))
     show_lineplot = not options['hide_lineplot']
@@ -1186,8 +1205,10 @@ def v4_graph():
 
         try:
             machine = \
-                ts.query(ts.Machine).filter(ts.Machine.id == machine_id).one()
-            test = ts.query(ts.Test).filter(ts.Test.id == test_id).one()
+                session.query(ts.Machine) \
+                    .filter(ts.Machine.id == machine_id) \
+                    .one()
+            test = session.query(ts.Test).filter(ts.Test.id == test_id).one()
             field = ts.sample_fields[field_index]
         except NoResultFound:
             return abort(404)
@@ -1217,8 +1238,9 @@ def v4_graph():
             return abort(404)
 
         try:
-            machine = \
-                ts.query(ts.Machine).filter(ts.Machine.id == machine_id).one()
+            machine = session.query(ts.Machine) \
+                .filter(ts.Machine.id == machine_id) \
+                .one()
         except NoResultFound:
             return abort(404)
         field = ts.sample_fields[field_index]
@@ -1246,7 +1268,7 @@ def v4_graph():
             return abort(400)
 
         try:
-            run = ts.query(ts.Run) \
+            run = session.query(ts.Run) \
                 .options(joinedload(ts.Run.machine)) \
                 .filter(ts.Run.id == run_id) \
                 .one()
@@ -1289,7 +1311,7 @@ def v4_graph():
             if highlight_run is None:
                 abort(404)
             prev_runs = list(
-                ts.get_previous_runs_on_machine(highlight_run, N=1, cv=True))
+                ts.get_previous_runs_on_machine(session, highlight_run, N=1, cv=True))
             if prev_runs:
                 start_rev = prev_runs[0].order.llvm_project_revision
                 end_rev = int(max_revision) + 1
@@ -1304,7 +1326,7 @@ def v4_graph():
 
             # Find the neighboring runs, by order.
             prev_runs = list(
-                ts.get_previous_runs_on_machine(highlight_run, N=1))
+                ts.get_previous_runs_on_machine(session, highlight_run, N=1))
             if prev_runs:
                 start_rev = prev_runs[0].order.llvm_project_revision
                 end_rev = highlight_run.order.llvm_project_revision
@@ -1333,14 +1355,13 @@ def v4_graph():
         # we want to load. Actually, we should just make this a single query.
         #
         # FIXME: Don't hard code field name.
-        q = ts.query(field.column, ts.Order.llvm_project_revision,
+        q = session.query(field.column, ts.Order.llvm_project_revision,
                      ts.Run.start_time, ts.Run.id). \
                      join(ts.Run).join(ts.Order). \
                      filter(ts.Run.machine_id == machine.id). \
                      filter(ts.Sample.test == test). \
                      filter(ts.Order.llvm_project_revision <= max_revision). \
                      filter(field.column != None)
-
 
         # Unless all samples requested, filter out failing tests.
         if not show_failures:
@@ -1372,16 +1393,17 @@ def v4_graph():
 
         # Get baselines for this line
         num_baselines = len(baseline_parameters)
-
-        for baseline_id, (baseline, baseline_title) in enumerate(
-                baseline_parameters):
-            q_baseline = ts.query(field.column, ts.Order.llvm_project_revision,
-                                  ts.Run.start_time, ts.Machine.name). \
-                join(ts.Run).join(ts.Order).join(ts.Machine). \
-                filter(ts.Run.id == baseline.id). \
-                filter(ts.Sample.test == test). \
-                filter(field.column != None)
-            # In the event of many samples, use the mean of the samples as the baseline.
+        for baseline_id, (baseline, baseline_title) in \
+                enumerate(baseline_parameters):
+            q_baseline = session.query(field.column,
+                                       ts.Order.llvm_project_revision,
+                                       ts.Run.start_time, ts.Machine.name) \
+                         .join(ts.Run).join(ts.Order).join(ts.Machine) \
+                         .filter(ts.Run.id == baseline.id) \
+                         .filter(ts.Sample.test == test) \
+                         .filter(field.column.isnot(None))
+            # In the event of many samples, use the mean of the samples as the
+            # baseline.
 
             samples = []
             for sample in q_baseline:
@@ -1416,9 +1438,9 @@ def v4_graph():
         col = (0, 0, 0)
         legend.append(LegendItem(machine, test_name, field.name, col, None))
 
-        q = ts.query(sqlalchemy.sql.func.min(field.column),
-                     ts.Order.llvm_project_revision,
-                     sqlalchemy.sql.func.min(ts.Run.start_time)) \
+        q = session.query(sqlalchemy.sql.func.min(field.column),
+                          ts.Order.llvm_project_revision,
+                          sqlalchemy.sql.func.min(ts.Run.start_time)) \
               .join(ts.Run).join(ts.Order).join(ts.Test) \
               .filter(ts.Run.machine_id == machine.id) \
               .filter(field.column.isnot(None)) \
@@ -1676,13 +1698,14 @@ def v4_graph():
 def v4_global_status():
     from lnt.server.ui import util
 
+    session = request.session
     ts = request.get_testsuite()
     metric_fields = sorted(list(ts.Sample.get_metric_fields()),
                            key=lambda f: f.name)
     fields = dict((f.name, f) for f in metric_fields)
 
     # Get the latest run.
-    latest = ts.query(ts.Run.start_time). \
+    latest = session.query(ts.Run.start_time).\
         order_by(ts.Run.start_time.desc()).first()
 
     # If we found an entry, use that.
@@ -1701,7 +1724,9 @@ def v4_global_status():
     field = fields.get(request.args.get('field', None), metric_fields[0])
 
     # Get the list of all runs we might be interested in.
-    recent_runs = ts.query(ts.Run).filter(ts.Run.start_time > yesterday).all()
+    recent_runs = session.query(ts.Run) \
+        .filter(ts.Run.start_time > yesterday) \
+        .all()
 
     # Aggregate the runs by machine.
     recent_runs_by_machine = multidict.multidict()
@@ -1733,7 +1758,8 @@ def v4_global_status():
         runs = recent_runs_by_machine[machine]
 
         # Get the baseline run for this machine.
-        baseline = machine.get_closest_previously_reported_run(revision)
+        baseline = machine.get_closest_previously_reported_run(session,
+                                                               revision)
 
         # Choose the "best" run to report on. We want the most recent one with
         # the most recent order.
@@ -1744,13 +1770,14 @@ def v4_global_status():
         reported_run_ids.append(run.id)
 
     # Get the set all tests reported in the recent runs.
-    reported_tests = ts.query(ts.Test.id, ts.Test.name).filter(
+    reported_tests = session.query(ts.Test.id, ts.Test.name).filter(
         sqlalchemy.sql.exists('*', sqlalchemy.sql.and_(
             ts.Sample.run_id.in_(reported_run_ids),
             ts.Sample.test_id == ts.Test.id))).all()
 
     # Load all of the runs we are interested in.
-    runinfo = lnt.server.reporting.analysis.RunInfo(ts, reported_run_ids)
+    runinfo = lnt.server.reporting.analysis.RunInfo(session, ts,
+                                                    reported_run_ids)
 
     # Build the test matrix. This is a two dimensional table index by
     # (machine-index, test-index), where each entry is the percent change.
@@ -1789,10 +1816,11 @@ def v4_global_status():
 def v4_daily_report_overview():
     # Redirect to the report for the most recent submitted run's date.
 
+    session = request.session
     ts = request.get_testsuite()
 
     # Get the latest run.
-    latest = ts.query(ts.Run). \
+    latest = session.query(ts.Run).\
         order_by(ts.Run.start_time.desc()).limit(1).first()
 
     # If we found a run, use it's start time.
@@ -1828,6 +1856,7 @@ def v4_daily_report(year, month, day):
 
     filter_machine_regex = request.args.get('filter-machine-regex')
 
+    session = request.session
     ts = request.get_testsuite()
 
     # Create the report object.
@@ -1837,7 +1866,7 @@ def v4_daily_report(year, month, day):
 
     # Build the report.
     try:
-        report.build()
+        report.build(request.session)
     except ValueError:
         return abort(400)
 
@@ -1894,16 +1923,16 @@ def v4_summary_report_ui():
     all_machines = set()
     all_orders = set()
     for ts in testsuites:
-        for name, in ts.query(ts.Machine.name):
+        for name, in session.query(ts.Machine.name):
             all_machines.add(name)
-        for name, in ts.query(ts.Order.llvm_project_revision):
+        for name, in session.query(ts.Order.llvm_project_revision):
             all_orders.add(name)
     all_machines = sorted(all_machines)
     all_orders = sorted(all_orders, key=to_key)
 
     return render_template("v4_summary_report_ui.html",
                            config=config, all_machines=all_machines,
-                           all_orders=all_orders)
+                           all_orders=all_orders, **ts_data(ts))
 
 
 @db_route("/summary_report")
@@ -1990,13 +2019,14 @@ def v4_search():
         except:
             return False
 
+    session = request.session
     ts = request.get_testsuite()
     query = request.args.get('q')
     l = request.args.get('l', 8)
     default_machine = request.args.get('m', None)
 
     assert query
-    results = lnt.server.db.search.search(ts, query, num_results=l,
+    results = lnt.server.db.search.search(session, ts, query, num_results=l,
                                           default_machine=default_machine)
 
     return json.dumps(
@@ -2036,12 +2066,13 @@ def baseline():
     """Get the baseline object from the user's current session baseline value
     or None if one is not defined.
     """
+    session = request.session
     ts = request.get_testsuite()
-    base_id = session.get(baseline_key())
+    base_id = flask.session.get(baseline_key())
     if not base_id:
         return None
     try:
-        base = ts.query(ts.Baseline).get(base_id)
+        base = session.query(ts.Baseline).get(base_id)
     except NoResultFound:
         return None
     return base
@@ -2057,6 +2088,7 @@ def v4_matrix():
     the paramters, and is ignored.
 
     """
+    session = request.session
     ts = request.get_testsuite()
     # Load the matrix request parameters.
     form = MatrixOptions(request.form)
@@ -2084,12 +2116,13 @@ def v4_matrix():
             return abort(404, "Invalid field index: {}".format(field_index))
 
         try:
-            machine = \
-                ts.query(ts.Machine).filter(ts.Machine.id == machine_id).one()
+            machine = session.query(ts.Machine) \
+                .filter(ts.Machine.id == machine_id) \
+                .one()
         except NoResultFound:
             return abort(404, "Invalid machine ID: {}".format(machine_id))
         try:
-            test = ts.query(ts.Test).filter(ts.Test.id == test_id).one()
+            test = session.query(ts.Test).filter(ts.Test.id == test_id).one()
         except NoResultFound:
             return abort(404, "Invalid test ID: {}".format(test_id))
         try:
@@ -2121,8 +2154,8 @@ def v4_matrix():
     all_orders = set()
     order_to_id = {}
     for req in data_parameters:
-        q = ts.query(req.field.column, ts.Order.llvm_project_revision,
-                     ts.Order.id) \
+        q = session.query(req.field.column, ts.Order.llvm_project_revision,
+                          ts.Order.id) \
             .join(ts.Run) \
             .join(ts.Order) \
             .filter(ts.Run.machine_id == req.machine.id) \
@@ -2159,8 +2192,9 @@ def v4_matrix():
         baseline_name = backup_baseline
 
     for req in data_parameters:
-        q_baseline = ts.query(req.field.column, ts.Order.llvm_project_revision,
-                              ts.Order.id) \
+        q_baseline = session.query(req.field.column,
+                                   ts.Order.llvm_project_revision,
+                                   ts.Order.id) \
                        .join(ts.Run) \
                        .join(ts.Order) \
                        .filter(ts.Run.machine_id == req.machine.id) \
@@ -2228,7 +2262,7 @@ def v4_matrix():
                                                         curr_geomean,
                                                         False)
     # Calculate the date of each order.
-    runs = ts.query(ts.Run.start_time, ts.Order.llvm_project_revision) \
+    runs = session.query(ts.Run.start_time, ts.Order.llvm_project_revision) \
              .join(ts.Order) \
              .filter(ts.Order.llvm_project_revision.in_(all_orders)) \
              .all()

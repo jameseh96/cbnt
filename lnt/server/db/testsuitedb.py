@@ -1381,7 +1381,7 @@ class TestSuiteDB(object):
         # Load a map of all the tests, which we will extend when we find tests
         # that need to be added.
         # Downcast to str, so we match on MySQL.
-        test_cache = dict((str(test.name), test)
+        test_cache = dict((test.name, test)
                           for test in session.query(self.Test))
 
         if cv:
@@ -1392,10 +1392,9 @@ class TestSuiteDB(object):
             sample_type = self.Sample
 
         profiles = dict()
-        field_dict = dict([(str(f.name), f) for f in sample_fields])
-
+        field_dict = dict([(f.name, f) for f in sample_fields])
         for test_data in tests_data:
-            name = str(test_data['name'])
+            name = test_data['name']
             test = test_cache.get(name)
             if test is None:
                 test = self.Test(test_data['name'])

@@ -94,14 +94,20 @@ class TestSuite(Base):
     # as the LNT version).
     version = Column("Version", String(16))
 
-    machine_fields = relation('MachineField', backref='test_suite')
-    order_fields = relation('OrderField', backref='test_suite')
-    run_fields = relation('RunField', backref='test_suite')
-    sample_fields = relation('SampleField', backref='test_suite')
-    cv_order_fields = relation('CVOrderField', backref='test_suite')
-    cv_run_fields = relation('CVRunField', backref='test_suite')
-    cv_sample_fields = relation('CVSampleField', backref='test_suite')
-
+    machine_fields = relation('MachineField', backref='test_suite',
+                              lazy='immediate')
+    order_fields = relation('OrderField', backref='test_suite',
+                            lazy='immediate')
+    run_fields = relation('RunField', backref='test_suite',
+                          lazy='immediate')
+    sample_fields = relation('SampleField', backref='test_suite',
+                             lazy='immediate')
+    cv_order_fields = relation('CVOrderField', backref='test_suite',
+                               lazy='immediate')
+    cv_run_fields = relation('CVRunField', backref='test_suite',
+                             lazy='immediate')
+    cv_sample_fields = relation('CVSampleField', backref='test_suite',
+                                lazy='immediate')
 
     def __init__(self, name, db_key_name):
         self.name = name
@@ -331,7 +337,7 @@ class SampleField(FieldMixin, Base):
 
     # The type of sample this is.
     type_id = Column("Type", Integer, ForeignKey('SampleType.ID'))
-    type = relation(SampleType)
+    type = relation(SampleType, lazy='immediate')
 
     # The info key describes the key to expect this field to be present as in
     # the reported machine information. Missing keys result in NULL values in
@@ -343,7 +349,7 @@ class SampleField(FieldMixin, Base):
     # association is used by UI code to present the two status fields together.
     status_field_id = Column("status_field", Integer, ForeignKey(
             'TestSuiteSampleFields.ID'))
-    status_field = relation('SampleField', remote_side=id)
+    status_field = relation('SampleField', remote_side=id, lazy='immediate')
 
     # Most real type samples assume lower values are better than higher values.
     # This assumption can be inverted by setting this column to nonzero.

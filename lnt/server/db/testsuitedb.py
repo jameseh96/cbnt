@@ -167,11 +167,12 @@ class TestSuiteDB(object):
                 class_dict[iname] = item.column = make_machine_column(iname)
 
             def __init__(self, name_value):
+                self.id = None
                 self.name = name_value
 
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,
-                                    (self.name,))
+                                    (self.id, self.name))
 
             @property
             def parameters(self):
@@ -461,6 +462,7 @@ class TestSuiteDB(object):
                 class_dict[iname] = item.column = make_run_column(iname)
 
             def __init__(self, machine, order, start_time, end_time):
+                self.id = None
                 self.machine = machine
                 self.order = order
                 self.start_time = start_time
@@ -469,8 +471,8 @@ class TestSuiteDB(object):
 
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,
-                                    (self.machine, self.order, self.start_time,
-                                     self.end_time))
+                                    (self.id, self.machine, self.order,
+                                     self.start_time, self.end_time))
 
             @property
             def parameters(self):
@@ -512,11 +514,12 @@ class TestSuiteDB(object):
             name = Column("Name", String(256), unique=True, index=True)
 
             def __init__(self, name):
+                self.id = None
                 self.name = name
 
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,
-                                    (self.name,))
+                                    (self.id, self.name))
 
             def __json__(self, include_id=True):
                 result = {'name': self.name}
@@ -702,6 +705,7 @@ class TestSuiteDB(object):
                 class_dict[iname] = item.column
 
             def __init__(self, run, test, **kwargs):
+                self.id = None
                 self.run = run
                 self.test = test
 
@@ -713,9 +717,9 @@ class TestSuiteDB(object):
                 fields = dict((item.name, self.get_field(item))
                               for item in self.fields)
 
-                return '%s_%s(%r, %r, **%r)' % (
+                return '%s_%s(%r, %r, %r, **%r)' % (
                     db_key_name, self.__class__.__name__,
-                    self.run, self.test, fields)
+                    self.id, self.run, self.test, fields)
 
             def __json__(self, flatten_test=False, include_id=True):
                 result = {}

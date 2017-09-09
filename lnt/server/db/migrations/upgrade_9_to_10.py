@@ -59,6 +59,7 @@ def upgrade_testsuite(engine, session, name):
     Base.metadata.create_all(engine)
     # Commit changes (also closing all relevant transactions with
     # respect to Postgres like databases).
+
     session.commit()
 
 
@@ -73,7 +74,8 @@ def upgrade(engine, cb_testsuites):
             print(e)
             pass
     session.close()
-
+    return
+    
     test_suite_sample_fields = introspect_table(engine,
                                                 'TestSuiteSampleFields')
     test_suite_sample_fields_cv = introspect_table(engine,

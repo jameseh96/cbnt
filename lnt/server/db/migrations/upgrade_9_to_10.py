@@ -75,7 +75,7 @@ def upgrade(engine, cb_testsuites):
             pass
     session.close()
     return
-    
+
     test_suite_sample_fields = introspect_table(engine,
                                                 'TestSuiteSampleFields')
     test_suite_sample_fields_cv = introspect_table(engine,

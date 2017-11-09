@@ -23,7 +23,7 @@ def update_profile_stats(session, ts, run_id):
 
     try:
         history = json.loads(open(history_path).read())
-    except:
+    except Exception:
         history = []
     age = []
 

@@ -48,7 +48,7 @@ from lnt.server.ui.globals import db_url_for, v4_url_for
 from lnt.server.ui.util import FLASH_DANGER, FLASH_SUCCESS, FLASH_INFO
 from lnt.server.ui.util import PrecomputedCR
 from lnt.server.ui.util import mean
-from lnt.util import async_ops
+
 from lnt.util import logger
 from lnt.util import multidict
 from lnt.server.ui.util import baseline_key, convert_revision
@@ -1983,7 +1983,6 @@ def rules():
 
 @frontend.route('/log')
 def log():
-    async_ops.check_workers(True)
     with open(current_app.config['log_file_name'], 'r') as f:
         log_lines = f.readlines()
     r'2017-07-21 15:02:15,143 ERROR:'

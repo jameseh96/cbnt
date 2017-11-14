@@ -1,5 +1,5 @@
 from lnt.util import NTEmailReport
-from lnt.util import async_ops
+
 from lnt.util import logger
 import collections
 import datetime
@@ -7,9 +7,11 @@ import lnt.formats
 import lnt.server.reporting.analysis
 import lnt.testing
 import os
-import re
+
 import tempfile
 import time
+
+from lnt.server.db import fieldchange
 
 
 def import_and_report(config, db_name, db, session, file, format, ts_name,
@@ -160,7 +162,7 @@ def import_and_report(config, db_name, db, session, file, format, ts_name,
         #  see the submitted data.
         ts = db.testsuite.get(ts_name)
         if not cv and result['added_runs'] > 0:
-            async_ops.async_fieldchange_calc(db_name, ts, run, config)
+            fieldchange.post_submit_tasks(session, ts, run.id)
 
     # Add a handy relative link to the submitted run.
     if cv:

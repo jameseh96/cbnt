@@ -598,6 +598,7 @@ def v4_text_report(id):
 def simple_run(tag, id):
     # Get the expected test suite.
     db = request.get_db()
+    session = request.session
     ts = db.testsuite[tag]
 
     # Look for a matched run.
@@ -1892,6 +1893,7 @@ def get_summary_config_path():
 @db_route("/summary_report/edit", methods=('GET', 'POST'))
 def v4_summary_report_ui():
     # If this is a POST request, update the saved config.
+    session = request.session
     if request.method == 'POST':
         # Parse the config data.
         config_data = request.form.get('config')

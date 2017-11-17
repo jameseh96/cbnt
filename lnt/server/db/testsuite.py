@@ -193,7 +193,7 @@ class MachineField(FieldMixin, Base):
     def __repr__(self):
         return '%s%r' % (self.__class__.__name__, (self.name, ))
 
-    def duplicate(self):
+    def __copy__(self):
         return MachineField(self.name)
 
 
@@ -222,7 +222,7 @@ class OrderField(FieldMixin, Base):
     def __repr__(self):
         return '%s%r' % (self.__class__.__name__, (self.name, self.ordinal))
 
-    def duplicate(self):
+    def __copy__(self):
         return Ordinal(self.name, self.ordinal)
 
 
@@ -244,7 +244,7 @@ class RunField(FieldMixin, Base):
     def __repr__(self):
         return '%s%r' % (self.__class__.__name__, (self.name, ))
 
-    def duplicate(self):
+    def __copy__(self):
         return RunField(self.name)
 
 class CVOrderField(FieldMixin, Base):
@@ -343,7 +343,7 @@ class SampleField(FieldMixin, Base):
     def __repr__(self):
         return '%s%r' % (self.__class__.__name__, (self.name, self.type, ))
 
-    def duplicate(self):
+    def __copy__(self):
         return SampleField(self.name, self.type, self.status_field,
                            self.bigger_is_better)
 
@@ -514,7 +514,7 @@ def _sync_fields(session, existing_fields, new_fields):
                 existing = existing_field
                 break
         if existing is None:
-            existing_fields.append(new_field.duplicate())
+            existing_fields.append(new_field.__copy__())
 
 
 def sync_testsuite_with_metatables(session, testsuite):

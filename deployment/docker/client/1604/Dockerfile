@@ -1,4 +1,4 @@
-FROM ceejatec/ubuntu-1604-couchbase-cv
+FROM ceejatec/ubuntu-1604-couchbase-cv:20170530
 
 RUN pip install virtualenv
 RUN virtualenv /lnt/venv

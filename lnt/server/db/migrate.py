@@ -23,6 +23,7 @@ import lnt.server.db.util
 # If you want to add a new one, add it to the list
 CB_TESTSUITES = [{'name': 'memcached', 'db_key': 'Memcached'},
                  {'name': 'ep-engine', 'db_key': 'EP'},
+                 {'name': 'kv-engine', 'db_key': 'KV'},
                  {'name': 'ep-engine_watson', 'db_key': 'EP_watson'},
                  {'name': 'memcached_watson', 'db_key': 'Memcached_watson'}]
 

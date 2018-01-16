@@ -1243,7 +1243,7 @@ def v4_graph():
 @v4_route("/global_status")
 def v4_global_status():
     from lnt.server.ui import util
-    abort(404)
+
     ts = request.get_testsuite()
     metric_fields = sorted(list(ts.Sample.get_metric_fields()),
                            key=lambda f: f.name)
@@ -1329,7 +1329,7 @@ def v4_global_status():
         # Compute comparison results for each machine.
         row.extend((runinfo.get_run_comparison_result(
                         run, baseline, test_id, field,
-                        ts.Sample.get_hash_of_Binary_field),
+                        ts.Sample.get_hash_of_binary_field()),
                     run.id)
                    for baseline, run in machine_run_info)
 

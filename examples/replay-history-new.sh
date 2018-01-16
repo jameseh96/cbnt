@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
+SECONDS=0
+
 if [ $# -eq 0 ]; then
     echo "Usage: replay-history.sh"
     echo "-n --num-commits     number of commits to replay"
     echo "-s --start-commit    SHA of commit to start from"
+    echo "-t --timeout         timeout the script after X seconds"
     echo "-h --help            show this help message"
     exit 1
 fi
@@ -20,10 +23,15 @@ case $i in
     START_COMMIT="${i#*=}"
     shift # past argument=value
     ;;
+    -t=*|--timeout=*)
+    TIME_OUT="${i#*=}"
+    shift
+    ;;
     -h|--help)
     echo "Usage: replay-history.sh"
     echo "-n --num-commits     number of commits to replay"
     echo "-s --start-commit    SHA of commit to start from"
+    echo "-t --timeout         timeout the script after X seconds"
     echo "-h --help            show this help message"
     shift # past argument=value
     exit 1
@@ -77,6 +85,16 @@ for OUTPUT in $GIT_LOG; do
     make -j24
     CBNT_MACHINE_NAME="KV-Engine-Perf-2" lnt runtest "kv-engine" kv_engine/tests/cbnt_tests/cbnt_test_list.yml master --submit_url=http://172.23.122.48/submitRun -v --commit=1 --iterations=5
     make clean -j24
+
+    if [ -z ${TIMEOUT+x} ]; then
+        if [ $SECONDS -ge $TIMEOUT ]; then
+            set +x
+            echo "Timing out and cleaning up after $SECONDS seconds"
+            cd ..
+            rm -rf source
+            exit 0
+        fi
+    fi
 done
 
 cd ..

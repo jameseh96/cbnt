@@ -1,13 +1,49 @@
 #!/usr/bin/env bash
-set -x
 set -e
-if [ $# -ne 1 ]
-  then
-    echo "Usage: replay-history.sh [number_of_commits]"
+
+if [ $# -eq 0 ]; then
+    echo "Usage: replay-history.sh"
+    echo "-n --num-commits     number of commits to replay"
+    echo "-s --start-commit    SHA of commit to start from"
+    echo "-h --help            show this help message"
     exit 1
 fi
 
-NUM_COMMITS=$1
+for i in "$@"
+do
+case $i in
+    -n=*|--num-commits=*)
+    NUM_COMMITS="${i#*=}"
+    shift # past argument=value
+    ;;
+    -s=*|--start-commit=*)
+    START_COMMIT="${i#*=}"
+    shift # past argument=value
+    ;;
+    -h|--help)
+    echo "Usage: replay-history.sh"
+    echo "-n --num-commits     number of commits to replay"
+    echo "-s --start-commit    SHA of commit to start from"
+    echo "-h --help            show this help message"
+    shift # past argument=value
+    exit 1
+    ;;
+    *)
+    echo "Unknown flag set ${i}"
+    exit 1
+          # unknown option
+    ;;
+esac
+done
+
+if [ -z ${NUM_COMMITS+x} ]; then
+    echo "Number of commits not specified";
+    exit 1
+else
+    echo "Replaying the last $NUM_COMMITS commits";
+fi
+
+set -x
 
 mkdir source
 cd source
@@ -16,6 +52,10 @@ repo sync
 
 cd kv_engine
 git fetch http://review.couchbase.org/kv_engine refs/changes/42/87842/5
+if [ -z ${START_COMMIT+x} ]; then
+    echo "Checking out $START_COMMIT"
+    git checkout $START_COMMIT
+fi
 GIT_LOG=$(git --no-pager log --pretty=format:"%H~%cd" -n $NUM_COMMITS --reverse; echo)
 IFS=$'\n';
 cd ..

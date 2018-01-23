@@ -1,6 +1,5 @@
 *.pyc
 build/
-db/
 dist/
 atlassian-ide-plugin.xml
 .idea/

@@ -14,6 +14,11 @@ from sqlalchemy.orm import relation
 import lnt.server.db.migrations.upgrade_0_to_1 as upgrade_0_to_1
 import lnt.server.db.migrations.upgrade_2_to_3 as upgrade_2_to_3
 
+###
+# Upgrade TestSuite
+def get_base(test_suite):
+    """Return the schema base with field changes added."""
+    return add_profiles(test_suite)
 
 ###
 # Upgrade TestSuite

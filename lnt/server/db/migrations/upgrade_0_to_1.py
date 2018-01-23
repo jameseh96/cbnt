@@ -9,6 +9,7 @@ from sqlalchemy.orm import relation
 
 Base = sqlalchemy.ext.declarative.declarative_base()
 
+
 ###
 # Core Schema
 
@@ -17,10 +18,12 @@ class SampleType(Base):
     id = Column("ID", Integer, primary_key=True)
     name = Column("Name", String(256), unique=True)
 
+
 class StatusKind(Base):
     __tablename__ = 'StatusKind'
     id = Column("ID", Integer, primary_key=True)
     name = Column("Name", String(256), unique=True)
+
 
 class TestSuite(Base):
     __tablename__ = 'TestSuite'
@@ -36,6 +39,7 @@ class TestSuite(Base):
     cv_run_fields = relation('CVRunField', backref='test_suite')
     cv_sample_fields = relation('CVSampleField', backref='test_suite')
 
+
 class MachineField(Base):
     __tablename__ = 'TestSuiteMachineFields'
     id = Column("ID", Integer, primary_key=True)
@@ -43,6 +47,7 @@ class MachineField(Base):
                            index=True)
     name = Column("Name", String(256))
     info_key = Column("InfoKey", String(256))
+
 
 class OrderField(Base):
     __tablename__ = 'TestSuiteOrderFields'
@@ -52,6 +57,7 @@ class OrderField(Base):
     name = Column("Name", String(256))
     info_key = Column("InfoKey", String(256))
     ordinal = Column("Ordinal", Integer)
+
 
 class RunField(Base):
     __tablename__ = 'TestSuiteRunFields'
@@ -91,7 +97,7 @@ class SampleField(Base):
     type = relation(SampleType)
     info_key = Column("InfoKey", String(256))
     status_field_id = Column("status_field", Integer, ForeignKey(
-            'TestSuiteSampleFields.ID'))
+        'TestSuiteSampleFields.ID'))
     status_field = relation('SampleField', remote_side=id)
 
 
@@ -105,7 +111,7 @@ class CVSampleField(Base):
     type = relation(SampleType)
     info_key = Column("InfoKey", String(256))
     status_field_id = Column("status_field", Integer, ForeignKey(
-            'TestSuiteCVSampleFields.ID'))
+        'TestSuiteCVSampleFields.ID'))
     status_field = relation('CVSampleField', remote_side=id)
 
 
@@ -127,44 +133,6 @@ def initialize_core(engine, session):
 
     session.commit()
 
-###
-# NTS Testsuite Definition
-
-def initialize_nts_definition(engine, session):
-    # Fetch the sample types.
-    real_sample_type = session.query(SampleType).\
-        filter_by(name = "Real").first()
-    status_sample_type = session.query(SampleType).\
-        filter_by(name = "Status").first()
-
-    # Create a test suite compile with "lnt runtest nt".
-    ts = TestSuite(name="nts", db_key_name="NT")
-
-    # Promote the natural information produced by 'runtest nt' to fields.
-    ts.machine_fields.append(MachineField(name="hardware", info_key="hardware"))
-    ts.machine_fields.append(MachineField(name="os", info_key="os"))
-
-    # The only reliable order currently is the "run_order" field. We will want
-    # to revise this over time.
-    ts.order_fields.append(OrderField(name="llvm_project_revision",
-                                      info_key="run_order", ordinal=0))
-
-    # We are only interested in simple runs, so we expect exactly four fields
-    # per test.
-    compile_status = SampleField(name="compile_status", type=status_sample_type,
-                                 info_key=".compile.status")
-    compile_time = SampleField(name="compile_time", type=real_sample_type,
-                               info_key=".compile", status_field=compile_status)
-    exec_status = SampleField(name="execution_status", type=status_sample_type,
-                              info_key=".exec.status")
-    exec_time = SampleField(name="execution_time", type=real_sample_type,
-                            info_key=".exec", status_field=exec_status)
-    ts.sample_fields.append(compile_time)
-    ts.sample_fields.append(compile_status)
-    ts.sample_fields.append(exec_time)
-    ts.sample_fields.append(exec_status)
-
-    session.add(ts)
 
 def initialize_couchbase_definition(engine, session, name, key_name):
     real_sample_type = session.query(SampleType). \
@@ -188,19 +156,20 @@ def initialize_couchbase_definition(engine, session, name, key_name):
         OrderField(name="git_sha", info_key="git_sha", ordinal=1))
 
     ts.cv_order_fields.append(CVOrderField(name="llvm_project_revision",
-                                         info_key="run_order", ordinal=0))
+                                           info_key="run_order", ordinal=0))
     ts.cv_order_fields.append(
         CVOrderField(name="git_sha", info_key="git_sha", ordinal=1))
     ts.cv_order_fields.append(
-        CVOrderField(name="parent_commit", info_key="parent_commit", ordinal=2))
+        CVOrderField(name="parent_commit", info_key="parent_commit",
+                     ordinal=2))
 
     # We are only interested in simple runs, so we expect exactly four fields
     # per test.
     exec_status = SampleField(name="execution_status", type=status_sample_type,
-                             info_key=".exec.status")
+                              info_key=".exec.status")
     cv_exec_status = CVSampleField(name="execution_status",
-                        type = status_sample_type,
-    info_key = ".exec.status")
+                                   type=status_sample_type,
+                                   info_key=".exec.status")
 
     ts.sample_fields.append(exec_status)
 
@@ -213,27 +182,31 @@ def initialize_couchbase_definition(engine, session, name, key_name):
                       info_key=".exec", status_field=cv_exec_status))
     session.add(ts)
 
+
 def initialize_epengine_definition(engine, session):
     initialize_couchbase_definition(engine, session, 'ep-engine', 'EP')
 
+
 def initialize_memcached_definition(engine, session):
     initialize_couchbase_definition(engine, session, 'memcached', 'Memcached')
+
 
 ###
 # Compile Testsuite Definition
 
 def initialize_compile_definition(engine, session):
     # Fetch the sample types.
-    real_sample_type = session.query(SampleType).\
-        filter_by(name = "Real").first()
-    status_sample_type = session.query(SampleType).\
-        filter_by(name = "Status").first()
+    real_sample_type = session.query(SampleType). \
+        filter_by(name="Real").first()
+    status_sample_type = session.query(SampleType). \
+        filter_by(name="Status").first()
 
     # Create a test suite compile with "lnt runtest compile".
     ts = TestSuite(name="compile", db_key_name="Compile")
 
     # Promote some natural information to fields.
-    ts.machine_fields.append(MachineField(name="hardware", info_key="hw.model"))
+    ts.machine_fields.append(
+        MachineField(name="hardware", info_key="hw.model"))
     ts.machine_fields.append(MachineField(name="os_version",
                                           info_key="kern.version"))
 
@@ -243,21 +216,22 @@ def initialize_compile_definition(engine, session):
                                       info_key="run_order", ordinal=0))
 
     # We expect up to five fields per test, each with a status field.
-    for name,type_name in (('user', 'time'),
-                           ('sys', 'time'),
-                           ('wall', 'time'),
-                           ('size', 'bytes'),
-                           ('mem', 'bytes')):
+    for name, type_name in (('user', 'time'),
+                            ('sys', 'time'),
+                            ('wall', 'time'),
+                            ('size', 'bytes'),
+                            ('mem', 'bytes')):
         status = SampleField(
             name="%s_status" % (name,), type=status_sample_type,
             info_key=".%s.status" % (name,))
         ts.sample_fields.append(status)
         value = SampleField(
-            name="%s_%s" % (name,type_name), type=real_sample_type,
+            name="%s_%s" % (name, type_name), type=real_sample_type,
             info_key=".%s" % (name,), status_field=status)
         ts.sample_fields.append(value)
 
     session.add(ts)
+
 
 ###
 # Per-Testsuite Table Schema
@@ -266,6 +240,7 @@ def get_base_for_testsuite(test_suite):
     Base = sqlalchemy.ext.declarative.declarative_base()
 
     db_key_name = test_suite.db_key_name
+
     class Machine(Base):
         __tablename__ = db_key_name + '_Machine'
 
@@ -277,7 +252,7 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.machine_fields:
             if item.name in class_dict:
-                raise ValueError,"test suite defines reserved key %r" % (
+                raise ValueError, "test suite defines reserved key %r" % (
                     name,)
 
             class_dict[item.name] = item.column = Column(
@@ -289,14 +264,14 @@ def get_base_for_testsuite(test_suite):
         id = Column("ID", Integer, primary_key=True)
 
         next_order_id = Column("NextOrder", Integer, ForeignKey(
-                "%s.ID" % __tablename__))
+            "%s.ID" % __tablename__))
         previous_order_id = Column("PreviousOrder", Integer, ForeignKey(
-                "%s.ID" % __tablename__))
+            "%s.ID" % __tablename__))
 
         class_dict = locals()
         for item in test_suite.order_fields:
             if item.name in class_dict:
-                raise ValueError,"test suite defines reserved key %r" % (
+                raise ValueError, "test suite defines reserved key %r" % (
                     name,)
 
             class_dict[item.name] = item.column = Column(
@@ -323,7 +298,7 @@ def get_base_for_testsuite(test_suite):
         class_dict = locals()
         for item in test_suite.run_fields:
             if item.name in class_dict:
-                raise ValueError,"test suite defines reserved key %r" % (
+                raise ValueError, "test suite defines reserved key %r" % (
                     name,)
 
             class_dict[item.name] = item.column = Column(
@@ -396,7 +371,7 @@ def get_base_for_testsuite(test_suite):
                 item.column = Column(item.name, Float)
             elif item.type.name == 'Status':
                 item.column = Column(item.name, Integer, ForeignKey(
-                        StatusKind.id))
+                    StatusKind.id))
             elif item.type.name == 'Hash':
                 continue
             else:
@@ -444,9 +419,10 @@ def get_base_for_testsuite(test_suite):
     for item in test_suite.machine_fields:
         args.append(item.column)
     sqlalchemy.schema.Index("ix_%s_Machine_Unique" % db_key_name,
-                            *args, unique = True)
+                            *args, unique=True)
 
     return Base
+
 
 def initialize_testsuite(engine, session, name):
     defn = session.query(TestSuite).filter_by(name=name).first()
@@ -455,6 +431,7 @@ def initialize_testsuite(engine, session, name):
     # Create all the testsuite database tables. We don't need to worry about
     # checking if they already exist, SA will handle that for us.
     base = get_base_for_testsuite(defn).metadata.create_all(engine)
+
 
 ###
 

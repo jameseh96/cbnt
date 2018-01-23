@@ -8,12 +8,15 @@ suite metadata, so we only create the classes at runtime.
 import datetime
 import json
 import os
+import urllib2
 
 import sqlalchemy
 from sqlalchemy import *
 
 import testsuite
 import lnt.testing.profile.profile as profile
+from lnt.testing.util.commands import fatal
+
 
 def strip(obj):
     """Give back a dict without sqlalchemy stuff."""
@@ -68,7 +71,11 @@ class TestSuiteDB(object):
             def set_field(self, field, value):
                 return setattr(self, field.name, value)
 
+            def set_field_by_name(self, field, value):
+                return setattr(self, field, value)
+
         db_key_name = self.test_suite.db_key_name
+
         class Machine(self.base, ParameterizedMixin):
             __tablename__ = db_key_name + '_Machine'
 
@@ -839,6 +846,55 @@ class TestSuiteDB(object):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,(
                                     self.id, self.field_change))
 
+        class Gerrit(self.base, ParameterizedMixin):
+            __tablename__ = db_key_name + '_Gerrit'
+            id = Column("ID", Integer, primary_key=True)
+            order_id = Column("OrderID", Integer, ForeignKey(Order.id),
+                              index=True)
+            gerrit_change_id = Column("gerrit_change_id", String(256),
+                                      index=True)
+
+            order = sqlalchemy.orm.relation(Order)
+
+            def __init__(self, order):
+                self.order_id = order.id
+                self.order = order
+                self.gerrit_change_id = None
+
+            def __repr__(self):
+                return '%s_%s%r' % (db_key_name, self.__class__.__name__,
+                                    (self.gerrit_change_id, self.cvorder))
+
+            def __json__(self):
+                return strip(self.__dict__)
+
+        class CVGerrit(self.base, ParameterizedMixin):
+            __tablename__ = db_key_name + '_CV_Gerrit'
+            id = Column("ID", Integer, primary_key=True)
+            order_id = Column("OrderID", Integer, ForeignKey(CVOrder.id),
+                              index=True)
+            gerrit_change_id = Column("gerrit_change_id", String(256),
+                                      index=True)
+            gerrit_change_id_parent = Column("gerrit_change_id_parent",
+                                             String(256), index=True)
+
+            order = sqlalchemy.orm.relation(CVOrder)
+
+            def __init__(self, cvorder):
+                self.order_id = cvorder.id
+                self.cvorder = cvorder
+                self.gerrit_change_id = None
+                self.gerrit_change_id_parent = None
+
+            def __repr__(self):
+                return '%s_%s%r' % (db_key_name, self.__class__.__name__,
+                                    (self.gerrit_change_id,
+                                     self.gerrit_change_id_parent,
+                                     self.cvorder))
+
+            def __json__(self):
+                return strip(self.__dict__)
+
         self.Machine = Machine
         self.Run = Run
         self.Test = Test
@@ -852,6 +908,8 @@ class TestSuiteDB(object):
         self.Regression = Regression
         self.RegressionIndicator = RegressionIndicator
         self.ChangeIgnore = ChangeIgnore
+        self.Gerrit = Gerrit
+        self.CVGerrit = CVGerrit
 
         # Create the compound index we cannot declare inline.
         sqlalchemy.schema.Index("ix_%s_Sample_RunID_TestID" % db_key_name,
@@ -995,6 +1053,57 @@ class TestSuiteDB(object):
 
             return order,True
 
+    def _getOrCreateGerrit(self, order, run_parameters, cv=False):
+
+        def get_gerrit_id_for_sha(sha):
+            url = 'http://review.couchbase.org/changes/{}'.format(sha)
+
+            try:
+                response = urllib2.urlopen(url).read()
+            except Exception:
+                fatal('failed to get parent commit from {}')
+                raise
+
+            start_index = response.index('{')
+            response = response[start_index:]
+
+            try:
+                json_response = json.loads(response)
+            except Exception:
+                fatal('Failed to decode Gerrit json response: {}'.format(
+                    response))
+                raise
+
+            return json_response["change_id"]
+
+        if cv:
+            gerrit_type = self.CVGerrit
+            gerrit_fields = [{"raw": "git_sha",
+                              "inserted": "gerrit_change_id"},
+                             {"raw": "parent_commit",
+                              "inserted": "gerrit_change_id_parent"}]
+        else:
+            gerrit_type = self.Gerrit
+            gerrit_fields = [{"raw": "git_sha",
+                              "inserted": "gerrit_change_id"}]
+
+        query = self.query(gerrit_type)
+        gerrit = gerrit_type(order)
+
+        for item in gerrit_fields:
+            if item["raw"] in run_parameters:
+                value = get_gerrit_id_for_sha(run_parameters.pop(item["raw"]))
+            else:
+                value = ''
+            query = query.filter(item["inserted"] == value)
+            gerrit.set_field_by_name(item["inserted"], value)
+
+        try:
+            return query.one(), False
+        except sqlalchemy.orm.exc.NoResultFound:
+            self.add(gerrit)
+            return gerrit, True
+
     def _getOrCreateRun(self, run_data, machine, cv=False):
         """
         _getOrCreateRun(data) -> Run, bool
@@ -1014,6 +1123,7 @@ class TestSuiteDB(object):
 
         # Find the order record.
         order,inserted = self._getOrCreateOrder(run_parameters, cv=cv)
+
         start_time = datetime.datetime.strptime(run_data['Start Time'],
                                                 "%Y-%m-%d %H:%M:%S")
         end_time = datetime.datetime.strptime(run_data['End Time'],
@@ -1168,14 +1278,18 @@ test %r is misnamed for reporting under schema %r""" % (
         # Construct the run entry.
         run,inserted = self._getOrCreateRun(data['Run'], machine, cv=cv)
 
+        # Copy them again to setup the Gerrit info
+        run_parameters_gerrit = data['Run']['Info'].copy()
+        self._getOrCreateGerrit(run.order, run_parameters_gerrit, cv=cv)
+
         # Get the schema tag.
         tag = data['Run']['Info']['tag']
-        
+
         # If we didn't construct a new run, this is a duplicate
         # submission. Return the prior Run.
         if not inserted:
             return False, run
-        
+
         self._importSampleValues(data['Tests'], run, tag, commit, config, cv=cv)
 
         return True, run

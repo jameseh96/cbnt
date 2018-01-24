@@ -5,6 +5,7 @@ import tempfile
 import time
 import copy
 import json
+import urllib2
 
 import flask
 from flask import abort
@@ -627,7 +628,58 @@ def v4_cv_run(id):
         test_info=test_info, analysis=lnt.server.reporting.analysis,
         test_min_value_filter=test_min_value_filter,
         request_info=info, urls=urls
-)
+    )
+
+
+@v4_route("/git/<sha>")
+def v4_git_sha(sha):
+    def get_gerrit_for_sha(_sha):
+        url = 'http://review.couchbase.org/changes/{}'.format(_sha)
+
+        try:
+            response = urllib2.urlopen(url).read()
+        except:
+            abort(404)
+
+        start_index = response.index('{')
+        response = response[start_index:]
+
+        try:
+            json_response = json.loads(response)
+        except:
+            abort(400)
+
+        return json_response
+
+    ts = request.get_testsuite()
+
+    gerrit_response = get_gerrit_for_sha(sha)
+    change_id = gerrit_response["change_id"]
+
+    master_gerrits = ts.query(ts.Gerrit).filter(
+        ts.Gerrit.gerrit_change_id == change_id).all()
+    cv_gerrits = ts.query(ts.CVGerrit).filter(
+        ts.CVGerrit.gerrit_change_id == change_id).all()
+
+    if master_gerrits is None and cv_gerrits is None:
+        abort(404)
+
+    master_orders = []
+    cv_orders = []
+
+    for master_run in master_gerrits:
+        master_orders.extend(ts.query(ts.Order).filter(
+            ts.Order.id == master_run.order.id).all())
+    for cv_run in cv_gerrits:
+        cv_orders.extend(ts.query(ts.CVOrder).filter(
+            ts.CVOrder.id == cv_run.order.id).all())
+
+    print(master_orders, cv_orders)
+
+    return render_template("v4_git_sha.html", ts=ts, sha=sha,
+                           gerrit=gerrit_response,
+                           master_orders=master_orders, cv_orders=cv_orders)
+
 
 @v4_route("/order/<int:id>")
 def v4_order(id):

@@ -73,6 +73,7 @@ def import_and_report(config, db_name, db, file, format, commit=False,
     importStartTime = time.time()
     cv = 'parent_commit' in data['Run']['Info']
 
+    print("ImportData: Calling db.importDataFromDict")
     try:
         success, run = db.importDataFromDict(data, commit, config=db_config, cv=cv)
     except KeyboardInterrupt:

@@ -1089,6 +1089,7 @@ class TestSuiteDB(object):
 
         query = self.query(gerrit_type)
         gerrit = gerrit_type(order)
+        query.filter(gerrit_type.order == order)
 
         for item in gerrit_fields:
             if item["raw"] in run_parameters:
@@ -1103,6 +1104,9 @@ class TestSuiteDB(object):
         except sqlalchemy.orm.exc.NoResultFound:
             self.add(gerrit)
             return gerrit, True
+
+    def backCreateGerrit(self, order, git_parameters, cv):
+        return self._getOrCreateGerrit(order, git_parameters, cv)
 
     def _getOrCreateRun(self, run_data, machine, cv=False):
         """
@@ -1271,6 +1275,7 @@ test %r is misnamed for reporting under schema %r""" % (
         The boolean result indicates whether the returned record was constructed
         or not (i.e., whether the data was a duplicate submission).
         """
+        print("testsuitedb: importDataFromDict")
 
         # Construct the machine entry.
         machine,inserted = self._getOrCreateMachine(data['Machine'])

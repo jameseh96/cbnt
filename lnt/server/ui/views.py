@@ -1,4 +1,6 @@
+from __future__ import print_function
 import datetime
+import logging
 import os
 import re
 import tempfile
@@ -6,6 +8,7 @@ import time
 import copy
 import json
 import urllib2
+import sys
 
 import flask
 from flask import abort
@@ -28,6 +31,7 @@ from lnt.server.ui.globals import db_url_for, v4_url_for
 import lnt.server.reporting.analysis
 import lnt.server.reporting.runs
 from lnt.server.ui.decorators import frontend, db_route, v4_route
+from lnt.testing.util.commands import warning, error, note
 import lnt.server.ui.util
 import lnt.server.reporting.dailyreport
 import lnt.server.reporting.summaryreport
@@ -37,6 +41,7 @@ from collections import namedtuple
 from lnt.util import async_ops
 
 integral_rex = re.compile(r"[\d]+")
+cv_sha_regex = re.compile('h=(?P<sha>[0-9A-z]+)')
 
 ###
 # Root-Only Routes
@@ -44,6 +49,7 @@ integral_rex = re.compile(r"[\d]+")
 @frontend.route('/favicon.ico')
 def favicon_ico():
     return redirect(url_for('.static', filename='favicon.ico'))
+
 
 @frontend.route('/select_db')
 def select_db():
@@ -63,12 +69,14 @@ def select_db():
             new_path += "/" + path.split("/", 2)[2]
     return redirect(request.script_root + new_path)
 
+
 #####
 # Per-Database Routes
 
-@db_route('/', only_v3 = False)
+@db_route('/', only_v3=False)
 def index():
     return render_template("index.html")
+
 
 ###
 # Database Actions
@@ -80,7 +88,7 @@ def submit_run():
         input_data = request.form.get('input_data')
         commit = int(request.form.get('commit', 0))
 
-	if input_file and not input_file.content_length:
+        if input_file and not input_file.content_length:
             input_file = None
 
         if not input_file and not input_data:
@@ -88,7 +96,8 @@ def submit_run():
                 "submit_run.html", error="must provide input file or data")
         if input_file and input_data:
             return render_template(
-                "submit_run.html", error="cannot provide input file *and* data")
+                "submit_run.html",
+                error="cannot provide input file *and* data")
 
         if input_file:
             data_value = input_file.read()
@@ -104,15 +113,15 @@ def submit_run():
                               "%04d-%02d" % (utcnow.year, utcnow.month))
         try:
             os.makedirs(tmpdir)
-        except OSError,e:
+        except OSError, e:
             pass
 
         # Save the file under a name prefixed with the date, to make it easier
         # to use these files in cases we might need them for debugging or data
         # recovery.
         prefix = utcnow.strftime("data-%Y-%m-%d_%H-%M-%S")
-        fd,path = tempfile.mkstemp(prefix=prefix, suffix='.plist',
-                                   dir=str(tmpdir))
+        fd, path = tempfile.mkstemp(prefix=prefix, suffix='.plist',
+                                    dir=str(tmpdir))
         os.write(fd, data_value)
         os.close(fd)
 
@@ -123,6 +132,7 @@ def submit_run():
         #
         # FIXME: Gracefully handle formats failures and DOS attempts. We
         # should at least reject overly large inputs.
+        print("Calling lnt.util.ImportData.import_and_report")
         result = lnt.util.ImportData.import_and_report(
             current_app.old_config, g.db_name, db, path, '<auto>', commit)
 
@@ -135,6 +145,7 @@ def submit_run():
 
     return render_template("submit_run.html")
 
+
 ###
 # V4 Schema Viewer
 
@@ -143,13 +154,14 @@ def v4_overview():
     return render_template("v4_overview.html",
                            testsuite_name=g.testsuite_name)
 
+
 @v4_route("/recent_activity")
 def v4_recent_activity():
     ts = request.get_testsuite()
 
     # Get the most recent runs in this tag, we just arbitrarily limit to looking
     # at the last 100 submission.
-    recent_master_runs = ts.query(ts.Run).\
+    recent_master_runs = ts.query(ts.Run). \
         order_by(ts.Run.start_time.desc()).limit(100)
     recent_master_runs = list(recent_master_runs)
     recent_cv_runs = ts.query(ts.CVRun). \
@@ -173,6 +185,7 @@ def v4_recent_activity():
                            active_master_submissions=active_master_submissions,
                            active_cv_submissions=active_cv_submissions)
 
+
 @v4_route("/machine/")
 def v4_machines():
     # Compute the list of associated runs, grouped by order.
@@ -182,7 +195,8 @@ def v4_machines():
     ts = request.get_testsuite()
 
     return render_template("all_machines.html",
-                       ts=ts)
+                           ts=ts)
+
 
 @v4_route("/machine/<int:id>")
 def v4_machine(id):
@@ -194,19 +208,19 @@ def v4_machine(id):
 
     master_runs = util.multidict(
         (run_order, r)
-        for r,run_order in ts.query(ts.Run, ts.Order).
-        join(ts.Order).
-        filter(ts.Run.machine_id == id).
-        order_by(ts.Run.start_time.desc()))
+        for r, run_order in ts.query(ts.Run, ts.Order).
+            join(ts.Order).
+            filter(ts.Run.machine_id == id).
+            order_by(ts.Run.start_time.desc()))
     master_runs = master_runs.items()
     master_runs.sort()
 
     cv_runs = util.multidict(
         (run_order, r)
         for r, run_order in ts.query(ts.CVRun, ts.CVOrder). \
-        join(ts.CVOrder).
-        filter(ts.CVRun.machine_id == id).
-        order_by(ts.CVRun.start_time.desc()))
+            join(ts.CVOrder).
+            filter(ts.CVRun.machine_id == id).
+            order_by(ts.CVRun.start_time.desc()))
     cv_runs = cv_runs.items()
     cv_runs.sort()
 
@@ -221,21 +235,23 @@ def v4_machine(id):
             rev = order[0].llvm_project_revision
             for run in order[1]:
                 json_obj['master_runs'].append((run.id, rev,
-                                         run.start_time.isoformat(), run.end_time.isoformat()))
+                                                run.start_time.isoformat(),
+                                                run.end_time.isoformat()))
         for order in cv_runs:
             rev = order[0].llvm_project_revision
             for run in order[1]:
                 json_obj['cv_runs'].append((run.id, rev,
-                                                run.start_time.isoformat(),
-                                                run.end_time.isoformat()))
+                                            run.start_time.isoformat(),
+                                            run.end_time.isoformat()))
         return flask.jsonify(**json_obj)
     try:
         return render_template("v4_machine.html",
-                           testsuite_name=g.testsuite_name, id=id,
-                           master_runs=master_runs, cv_runs=cv_runs)
+                               testsuite_name=g.testsuite_name, id=id,
+                               master_runs=master_runs, cv_runs=cv_runs)
     except NoResultFound as e:
         abort(404)
-        
+
+
 class V4RequestInfo(object):
     def __init__(self, run_id, only_html_body=True):
         self.db = request.get_db()
@@ -258,8 +274,8 @@ class V4RequestInfo(object):
         self.confidence_lv = confidence_lv
 
         # Find the neighboring runs, by order.
-        prev_runs = list(ts.get_previous_runs_on_machine(run, N = 3))
-        next_runs = list(ts.get_next_runs_on_machine(run, N = 3))
+        prev_runs = list(ts.get_previous_runs_on_machine(run, N=3))
+        next_runs = list(ts.get_next_runs_on_machine(run, N=3))
         self.neighboring_runs = next_runs[::-1] + [self.run] + prev_runs
 
         # Select the comparison run as either the previous run, or a user
@@ -267,16 +283,18 @@ class V4RequestInfo(object):
         compare_to_str = request.args.get('compare_to')
         if compare_to_str:
             compare_to_id = int(compare_to_str)
-            self.compare_to = ts.query(ts.Run).\
+            self.compare_to = ts.query(ts.Run). \
                 filter_by(id=compare_to_id).first()
             if self.compare_to is None:
                 # FIXME: Need better way to report this error.
                 abort(404)
 
             self.comparison_neighboring_runs = (
-                list(ts.get_next_runs_on_machine(self.compare_to, N=3))[::-1] +
-                [self.compare_to] +
-                list(ts.get_previous_runs_on_machine(self.compare_to, N=3)))
+                    list(ts.get_next_runs_on_machine(self.compare_to, N=3))[
+                    ::-1] +
+                    [self.compare_to] +
+                    list(
+                        ts.get_previous_runs_on_machine(self.compare_to, N=3)))
         else:
             if prev_runs:
                 self.compare_to = prev_runs[0]
@@ -294,7 +312,7 @@ class V4RequestInfo(object):
         baseline_str = request.args.get('baseline')
         if baseline_str:
             baseline_id = int(baseline_str)
-            self.baseline = ts.query(ts.Run).\
+            self.baseline = ts.query(ts.Run). \
                 filter_by(id=baseline_id).first()
             if self.baseline is None:
                 # FIXME: Need better way to report this error.
@@ -327,6 +345,7 @@ class V4RequestInfo(object):
             styles=styles, classes=classes)
         _, self.text_report, self.html_report, self.sri = reports
 
+
 class V4CVRequestInfo(object):
     def __init__(self, run_id, only_html_body=True):
         self.db = request.get_db()
@@ -349,8 +368,8 @@ class V4CVRequestInfo(object):
         self.confidence_lv = confidence_lv
 
         # Find the neighboring runs, by order.
-        prev_runs = list(ts.get_previous_runs_on_machine(run, N = 3, cv=True))
-        next_runs = list(ts.get_next_runs_on_machine(run, N = 3, cv=True))
+        prev_runs = list(ts.get_previous_runs_on_machine(run, N=3, cv=True))
+        next_runs = list(ts.get_next_runs_on_machine(run, N=3, cv=True))
         self.neighboring_runs = next_runs[::-1] + [self.run] + prev_runs
 
         # Select the comparison run as either the previous run, or a user
@@ -358,22 +377,26 @@ class V4CVRequestInfo(object):
         compare_to_str = request.args.get('compare_to')
         if compare_to_str:
             compare_to_id = int(compare_to_str)
-            self.compare_to = ts.query(ts.Run).\
+            self.compare_to = ts.query(ts.Run). \
                 filter_by(id=compare_to_id).first()
             if self.compare_to is None:
                 # FIXME: Need better way to report this error.
                 abort(404)
 
             self.comparison_neighboring_runs = (
-                list(ts.get_next_runs_on_machine(self.compare_to, N=3))[::-1] +
-                [self.compare_to] +
-                list(ts.get_previous_runs_on_machine(self.compare_to, N=3)))
+                    list(ts.get_next_runs_on_machine(self.compare_to, N=3))[
+                    ::-1] +
+                    [self.compare_to] +
+                    list(
+                        ts.get_previous_runs_on_machine(self.compare_to, N=3)))
         else:
             if prev_runs:
                 self.compare_to = prev_runs[0]
             else:
                 self.compare_to = None
-            self.comparison_neighboring_runs = [run for run in self.neighboring_runs if run is not self.run]
+            self.comparison_neighboring_runs = [run for run in
+                                                self.neighboring_runs if
+                                                run is not self.run]
 
         try:
             self.num_comparison_runs = int(
@@ -385,7 +408,7 @@ class V4CVRequestInfo(object):
         baseline_str = request.args.get('baseline')
         if baseline_str:
             baseline_id = int(baseline_str)
-            self.baseline = ts.query(ts.Run).\
+            self.baseline = ts.query(ts.Run). \
                 filter_by(id=baseline_id).first()
             if self.baseline is None:
                 # FIXME: Need better way to report this error.
@@ -418,17 +441,20 @@ class V4CVRequestInfo(object):
             styles=styles, classes=classes, cv=True)
         _, self.text_report, self.html_report, self.sri = reports
 
+
 @v4_route("/<int:id>/report")
 def v4_report(id):
     info = V4RequestInfo(id, only_html_body=False)
 
     return make_response(info.html_report)
 
+
 @v4_route("/<int:id>/report")
 def v4_cv_report(id):
     info = V4CVRequestInfo(id, only_html_body=False)
 
     return make_response(info.html_report)
+
 
 @v4_route("/<int:id>/text_report")
 def v4_text_report(id):
@@ -437,6 +463,7 @@ def v4_text_report(id):
     response = make_response(info.text_report)
     response.mimetype = "text/plain"
     return response
+
 
 # Compatilibity route for old run pages.
 @db_route("/simple/<tag>/<int:id>/", only_v3=False)
@@ -453,8 +480,8 @@ Invalid URL for version %r database.""" % (g.db_info.db_version,))
     ts = db.testsuite[tag]
 
     # Look for a matched run.
-    matched_run = ts.query(ts.Run).\
-        filter(ts.Run.simple_run_id == id).\
+    matched_run = ts.query(ts.Run). \
+        filter(ts.Run.simple_run_id == id). \
         first()
 
     # If we found one, redirect to it's report.
@@ -467,6 +494,7 @@ Invalid URL for version %r database.""" % (g.db_info.db_version,))
 Unable to find a v0.4 run for this ID. Please use the native v0.4 URL interface
 (instead of the /simple/... URL schema).""")
 
+
 @v4_route("/<int:id>")
 def v4_run(id):
     info = V4RequestInfo(id)
@@ -478,12 +506,14 @@ def v4_run(id):
     options = {}
     options['show_delta'] = bool(request.args.get('show_delta'))
     options['show_previous'] = bool(request.args.get('show_previous'))
-    options['show_stddev'] =  bool(request.args.get('show_stddev'))
+    options['show_stddev'] = bool(request.args.get('show_stddev'))
     options['show_mad'] = bool(request.args.get('show_mad'))
     options['show_all'] = bool(request.args.get('show_all'))
     options['show_all_samples'] = bool(request.args.get('show_all_samples'))
-    options['show_sample_counts'] = bool(request.args.get('show_sample_counts'))
-    options['show_graphs'] = show_graphs = bool(request.args.get('show_graphs'))
+    options['show_sample_counts'] = bool(
+        request.args.get('show_sample_counts'))
+    options['show_graphs'] = show_graphs = bool(
+        request.args.get('show_graphs'))
     options['show_data_table'] = bool(request.args.get('show_data_table'))
     options['show_small_diff'] = bool(request.args.get('show_small_diff'))
     options['hide_report_by_default'] = bool(
@@ -507,7 +537,7 @@ def v4_run(id):
     options['aggregation_fn'] = request.args.get('aggregation_fn', 'median')
 
     # Get the test names.
-    test_info = ts.query(ts.Test.name, ts.Test.id).\
+    test_info = ts.query(ts.Test.name, ts.Test.id). \
         order_by(ts.Test.name).all()
 
     # Filter the list of tests by name, if requested.
@@ -520,8 +550,8 @@ def v4_run(id):
         json_obj = dict()
 
         sri = lnt.server.reporting.analysis.RunInfo(ts, [id])
-        reported_tests = ts.query(ts.Test.name, ts.Test.id).\
-            filter(ts.Run.id == id).\
+        reported_tests = ts.query(ts.Test.name, ts.Test.id). \
+            filter(ts.Run.id == id). \
             filter(ts.Test.id.in_(sri.test_ids)).all()
 
         json_obj['tests'] = {}
@@ -546,7 +576,7 @@ def v4_run(id):
         test_info=test_info, analysis=lnt.server.reporting.analysis,
         test_min_value_filter=test_min_value_filter,
         request_info=info, urls=urls
-)
+    )
 
 
 @v4_route("/cv/<int:id>")
@@ -560,12 +590,14 @@ def v4_cv_run(id):
     options = {}
     options['show_delta'] = bool(request.args.get('show_delta'))
     options['show_previous'] = bool(request.args.get('show_previous'))
-    options['show_stddev'] =  bool(request.args.get('show_stddev'))
+    options['show_stddev'] = bool(request.args.get('show_stddev'))
     options['show_mad'] = bool(request.args.get('show_mad'))
     options['show_all'] = bool(request.args.get('show_all'))
     options['show_all_samples'] = bool(request.args.get('show_all_samples'))
-    options['show_sample_counts'] = bool(request.args.get('show_sample_counts'))
-    options['show_graphs'] = show_graphs = bool(request.args.get('show_graphs'))
+    options['show_sample_counts'] = bool(
+        request.args.get('show_sample_counts'))
+    options['show_graphs'] = show_graphs = bool(
+        request.args.get('show_graphs'))
     options['show_data_table'] = bool(request.args.get('show_data_table'))
     options['show_small_diff'] = bool(request.args.get('show_small_diff'))
     options['hide_report_by_default'] = bool(
@@ -589,7 +621,7 @@ def v4_cv_run(id):
     options['aggregation_fn'] = request.args.get('aggregation_fn', 'median')
 
     # Get the test names.
-    test_info = ts.query(ts.Test.name, ts.Test.id).\
+    test_info = ts.query(ts.Test.name, ts.Test.id). \
         order_by(ts.Test.name).all()
 
     # Filter the list of tests by name, if requested.
@@ -602,8 +634,8 @@ def v4_cv_run(id):
         json_obj = dict()
 
         sri = lnt.server.reporting.analysis.RunInfo(ts, [id], cv=[run])
-        reported_tests = ts.query(ts.Test.name, ts.Test.id).\
-            filter(ts.CVRun.id == id).\
+        reported_tests = ts.query(ts.Test.name, ts.Test.id). \
+            filter(ts.CVRun.id == id). \
             filter(ts.Test.id.in_(sri.test_ids)).all()
 
         json_obj['tests'] = {}
@@ -634,7 +666,8 @@ def v4_cv_run(id):
 @v4_route("/git/<sha>")
 def v4_git_sha(sha):
     def get_gerrit_for_sha(_sha):
-        url = 'http://review.couchbase.org/changes/{}'.format(_sha)
+        url = ('http://review.couchbase.org/changes/?q={}&o=ALL_REVISIONS&o='
+               'ALL_COMMITS&o=WEB_LINKS'.format(_sha))
 
         try:
             response = urllib2.urlopen(url).read()
@@ -642,7 +675,8 @@ def v4_git_sha(sha):
             abort(404)
 
         start_index = response.index('{')
-        response = response[start_index:]
+        end_index = response.rindex(']')
+        response = response[start_index:end_index]
 
         try:
             json_response = json.loads(response)
@@ -656,13 +690,52 @@ def v4_git_sha(sha):
     gerrit_response = get_gerrit_for_sha(sha)
     change_id = gerrit_response["change_id"]
 
+    patch_shas = []
+    for revision in gerrit_response['revisions']:
+        match = cv_sha_regex.search(gerrit_response['revisions'][revision]
+                                    ['commit']['web_links'][0]['url'])
+        if match:
+            patch_shas.append(match.group('sha'))
+
+    for p_sha in patch_shas:
+        master_shas = ts.query(ts.Order).filter(
+            ts.Order.git_sha == p_sha).all()
+        cv_shas = ts.query(ts.CVOrder).filter(
+            ts.CVOrder.git_sha == p_sha).all()
+        if master_shas and cv_shas:
+            abort(400)
+        else:
+            if master_shas:
+                for order in master_shas:
+                    if not ts.query(ts.Gerrit).filter(
+                            ts.Gerrit.order == order).all():
+                        gerrit = ts.Gerrit(order)
+                        gerrit.set_field_by_name("gerrit_change_id",
+                                                 change_id)
+                        ts.add(gerrit)
+                        ts.commit()
+                        note("Retro-adding new Gerrit: {}".format(gerrit.id))
+            else:
+                for order in cv_shas:
+                    if not ts.query(ts.CVGerrit).filter(
+                            ts.CVGerrit.order == order).all():
+                        gerrit = ts.CVGerrit(order)
+                        gerrit.set_field_by_name("gerrit_change_id",
+                                                 change_id)
+                        gerrit.set_field_by_name("gerrit_change_id_parent",
+                                                 get_gerrit_for_sha(
+                                                     order.parent_commit)[
+                                                     "change_id"])
+                        ts.add(gerrit)
+                        ts.commit()
+                        note(("Retro-adding new CV Gerrit: {}".format(
+                            gerrit.id)))
+
+    # Get the list of Gerrit changes we have for the change ID of the SHA
     master_gerrits = ts.query(ts.Gerrit).filter(
         ts.Gerrit.gerrit_change_id == change_id).all()
     cv_gerrits = ts.query(ts.CVGerrit).filter(
         ts.CVGerrit.gerrit_change_id == change_id).all()
-
-    if master_gerrits is None and cv_gerrits is None:
-        abort(404)
 
     master_orders = []
     cv_orders = []
@@ -674,7 +747,8 @@ def v4_git_sha(sha):
         cv_orders.extend(ts.query(ts.CVOrder).filter(
             ts.CVOrder.id == cv_run.order.id).all())
 
-    print(master_orders, cv_orders)
+    master_orders.sort()
+    cv_orders.sort()
 
     return render_template("v4_git_sha.html", ts=ts, sha=sha,
                            gerrit=gerrit_response,
@@ -693,6 +767,7 @@ def v4_order(id):
 
     return render_template("v4_order.html", ts=ts, order=order)
 
+
 @v4_route("/cv/order/<int:id>")
 def v4_cv_order(id):
     # Get the testsuite.
@@ -704,6 +779,7 @@ def v4_cv_order(id):
         abort(404)
 
     return render_template("v4_cv_order.html", ts=ts, order=order)
+
 
 @v4_route("/all_orders")
 def v4_all_orders():
@@ -718,6 +794,7 @@ def v4_all_orders():
 
     return render_template("v4_all_orders.html", ts=ts, orders=orders)
 
+
 @v4_route("/<int:id>/graph")
 def v4_run_graph(id):
     # This is an old style endpoint that treated graphs as associated with
@@ -729,9 +806,9 @@ def v4_run_graph(id):
         abort(404)
 
     # Convert the old style test parameters encoding.
-    args = { 'highlight_run' : id }
+    args = {'highlight_run': id}
     plot_number = 0
-    for name,value in request.args.items():
+    for name, value in request.args.items():
         # If this isn't a test specification, just forward it.
         if not name.startswith('test.'):
             args[name] = value
@@ -750,6 +827,7 @@ def v4_run_graph(id):
         plot_number += 1
 
     return redirect(v4_url_for("v4_graph", **args))
+
 
 @v4_route("/cv/<int:id>/graph")
 def v4_cv_run_graph(id):
@@ -762,10 +840,10 @@ def v4_cv_run_graph(id):
         abort(404)
 
     # Convert the old style test parameters encoding.
-    args = { 'highlight_run' : id,
-             'cv': id}
+    args = {'highlight_run': id,
+            'cv': id}
     plot_number = 0
-    for name,value in request.args.items():
+    for name, value in request.args.items():
         # If this isn't a test specification, just forward it.
         if not name.startswith('test.'):
             args[name] = value
@@ -785,8 +863,10 @@ def v4_cv_run_graph(id):
 
     return redirect(v4_url_for("v4_graph", **args))
 
+
 BaselineLegendItem = namedtuple('BaselineLegendItem', 'name id')
 LegendItem = namedtuple('LegendItem', 'machine test_name field_name color url')
+
 
 @v4_route("/graph")
 def v4_graph():
@@ -802,7 +882,8 @@ def v4_graph():
     options['hide_lineplot'] = bool(request.args.get('hide_lineplot'))
     show_lineplot = not options['hide_lineplot']
     options['show_mad'] = show_mad = bool(request.args.get('show_mad'))
-    options['show_stddev'] = show_stddev = bool(request.args.get('show_stddev'))
+    options['show_stddev'] = show_stddev = bool(
+        request.args.get('show_stddev'))
     options['hide_all_points'] = hide_all_points = bool(
         request.args.get('hide_all_points'))
     options['show_linear_regression'] = show_linear_regression = bool(
@@ -831,7 +912,7 @@ def v4_graph():
 
     # Load the graph parameters.
     graph_parameters = []
-    for name,value in request.args.items():
+    for name, value in request.args.items():
         # Plots to graph are passed as::
         #
         #  plot.<unused>=<machine id>.<test id>.<field index>
@@ -839,7 +920,7 @@ def v4_graph():
             continue
 
         # Ignore the extra part of the key, it is unused.
-        machine_id_str,test_id_str,field_index_str = value.split('.')
+        machine_id_str, test_id_str, field_index_str = value.split('.')
         try:
             machine_id = int(machine_id_str)
             test_id = int(test_id_str)
@@ -861,18 +942,18 @@ def v4_graph():
         graph_parameters.append((machine, test, field, field_index))
 
     # Order the plots by machine name, test name and then field.
-    graph_parameters.sort(key = lambda (m,t,f,_): (m.name, t.name, f.name, _))
+    graph_parameters.sort(key=lambda (m, t, f, _): (m.name, t.name, f.name, _))
 
     # Extract requested mean trend.
     mean_parameter = None
-    for name,value in request.args.items():
+    for name, value in request.args.items():
         # Mean to graph is passed as:
         #
         #  mean=<machine id>.<field index>
         if name != 'mean':
             continue
 
-        machine_id_str,field_index_str  = value.split('.')
+        machine_id_str, field_index_str = value.split('.')
         try:
             machine_id = int(machine_id_str)
             field_index = int(field_index_str)
@@ -896,7 +977,7 @@ def v4_graph():
 
     # Extract requested baselines, and their titles.
     baseline_parameters = []
-    for name,value in request.args.items():
+    for name, value in request.args.items():
         # Baselines to graph are passed as:
         #
         #  baseline.title=<run id>
@@ -912,9 +993,11 @@ def v4_graph():
             return abort(400)
 
         try:
-            run = ts.query(ts.Run).join(ts.Machine).filter(ts.Run.id == run_id).one()
+            run = ts.query(ts.Run).join(ts.Machine).filter(
+                ts.Run.id == run_id).one()
         except:
-            err_msg = "The run {} was not found in the database.".format(run_id)
+            err_msg = "The run {} was not found in the database.".format(
+                run_id)
             return render_template("error.html",
                                    message=err_msg)
 
@@ -934,7 +1017,8 @@ def v4_graph():
                 max_revision = parent_order.llvm_project_revision
             else:
                 max_revision = ts.query(
-                    sqlalchemy.func.max(ts.Order.llvm_project_revision)).scalar()
+                    sqlalchemy.func.max(
+                        ts.Order.llvm_project_revision)).scalar()
         else:
             max_revision = ts.query(
                 sqlalchemy.func.max(ts.Order.llvm_project_revision)).scalar()
@@ -944,7 +1028,8 @@ def v4_graph():
 
     highlight_run_id = request.args.get('highlight_run')
     if show_highlight and highlight_run_id and highlight_run_id.isdigit():
-        if cv and isinstance(cv, int) and cv_run and int(highlight_run_id) == cv:
+        if cv and isinstance(cv, int) and cv_run and int(
+                highlight_run_id) == cv:
             highlight_run = cv_run
             if highlight_run is None:
                 abort(404)
@@ -963,7 +1048,8 @@ def v4_graph():
                 abort(404)
 
             # Find the neighboring runs, by order.
-            prev_runs = list(ts.get_previous_runs_on_machine(highlight_run, N=1))
+            prev_runs = list(
+                ts.get_previous_runs_on_machine(highlight_run, N=1))
             if prev_runs:
                 start_rev = prev_runs[0].order.llvm_project_revision
                 end_rev = highlight_run.order.llvm_project_revision
@@ -979,11 +1065,12 @@ def v4_graph():
     baseline_plots = []
     num_plots = len(graph_parameters)
 
-    for i,(machine,test,field, field_index) in enumerate(graph_parameters):
+    for i, (machine, test, field, field_index) in enumerate(graph_parameters):
         # Determine the base plot color.
         col = list(util.makeDarkColor(float(i) / num_plots))
         url = "/".join([str(machine.id), str(test.id), str(field_index)])
-        legend.append(LegendItem(machine, test.name, field.name, tuple(col), url))
+        legend.append(
+            LegendItem(machine, test.name, field.name, tuple(col), url))
 
         # Load all the field values for this test on the same machine.
         #
@@ -991,11 +1078,12 @@ def v4_graph():
         # we want to load. Actually, we should just make this a single query.
         #
         # FIXME: Don't hard code field name.
-        q = ts.query(field.column, ts.Order.llvm_project_revision, ts.Run.start_time, ts.Run.id).\
-            join(ts.Run).join(ts.Order).\
-            filter(ts.Run.machine_id == machine.id).\
-            filter(ts.Sample.test == test).\
-            filter(ts.Order.llvm_project_revision <= max_revision).\
+        q = ts.query(field.column, ts.Order.llvm_project_revision,
+                     ts.Run.start_time, ts.Run.id). \
+            join(ts.Run).join(ts.Order). \
+            filter(ts.Run.machine_id == machine.id). \
+            filter(ts.Sample.test == test). \
+            filter(ts.Order.llvm_project_revision <= max_revision). \
             filter(field.column != None)
 
         # Unless all samples requested, filter out failing tests.
@@ -1005,7 +1093,8 @@ def v4_graph():
                              (field.status_field.column == None))
 
         # Aggregate by revision.
-        data = util.multidict((rev, (val, date, run_id)) for val,rev,date,run_id in q).items()
+        data = util.multidict(
+            (rev, (val, date, run_id)) for val, rev, date, run_id in q).items()
 
         # If CV result, add it to the data points
         if cv and isinstance(cv, int) and cv_run:
@@ -1018,7 +1107,8 @@ def v4_graph():
                 filter(cv_field.column != None)
 
             data.append((str(int(max_revision) + 1), [(val, date, run_id)
-                        for val, date, run_id in q_cv]))
+                                                      for val, date, run_id in
+                                                      q_cv]))
 
         data.sort(key=lambda sample: convert_revision(sample[0]))
 
@@ -1026,12 +1116,14 @@ def v4_graph():
 
         # Get baselines for this line
         num_baselines = len(baseline_parameters)
-        for baseline_id, (baseline, baseline_title) in enumerate(baseline_parameters):
-            q_baseline = ts.query(field.column, ts.Order.llvm_project_revision, ts.Run.start_time, ts.Machine.name).\
-                         join(ts.Run).join(ts.Order).join(ts.Machine).\
-                         filter(ts.Run.id == baseline.id).\
-                         filter(ts.Sample.test == test).\
-                         filter(field.column != None)
+        for baseline_id, (baseline, baseline_title) in enumerate(
+                baseline_parameters):
+            q_baseline = ts.query(field.column, ts.Order.llvm_project_revision,
+                                  ts.Run.start_time, ts.Machine.name). \
+                join(ts.Run).join(ts.Order).join(ts.Machine). \
+                filter(ts.Run.id == baseline.id). \
+                filter(ts.Sample.test == test). \
+                filter(field.column != None)
             # In the event of many samples, use the mean of the samples as the baseline.
             samples = []
             for sample in q_baseline:
@@ -1039,40 +1131,46 @@ def v4_graph():
             # Skip this baseline if there is no data.
             if not samples:
                 continue
-            mean = sum(samples)/len(samples)
+            mean = sum(samples) / len(samples)
             # Darken the baseline color distinguish from non-baselines.
             # Make a color closer to the sample than its neighbour.
             color_offset = float(baseline_id) / num_baselines / 2
             my_color = (i + color_offset) / num_plots
             dark_col = list(util.makeDarkerColor(my_color))
-            str_dark_col =  util.toColorString(dark_col)
+            str_dark_col = util.toColorString(dark_col)
             baseline_plots.append({'color': str_dark_col,
                                    'lineWidth': 2,
                                    'yaxis': {'from': mean, 'to': mean},
-                                   'name': q_baseline[0].llvm_project_revision})
-            baseline_name = "Baseline {} on {}".format(baseline_title,  q_baseline[0].name)
-            legend.append(LegendItem(BaselineLegendItem(baseline_name, baseline.id), test.name, field.name, dark_col, None))
+                                   'name': q_baseline[
+                                       0].llvm_project_revision})
+            baseline_name = "Baseline {} on {}".format(baseline_title,
+                                                       q_baseline[0].name)
+            legend.append(
+                LegendItem(BaselineLegendItem(baseline_name, baseline.id),
+                           test.name, field.name, dark_col, None))
 
     # Draw mean trend if requested.
     if mean_parameter:
         machine, field = mean_parameter
         test_name = 'Geometric Mean'
 
-        col = (0,0,0)
+        col = (0, 0, 0)
         legend.append(LegendItem(machine, test_name, field.name, col, None))
 
         q = ts.query(sqlalchemy.sql.func.min(field.column),
-                ts.Order.llvm_project_revision,
-                sqlalchemy.sql.func.min(ts.Run.start_time)).\
-            join(ts.Run).join(ts.Order).join(ts.Test).\
-            filter(ts.Run.machine_id == machine.id).\
-            filter(field.column != None).\
+                     ts.Order.llvm_project_revision,
+                     sqlalchemy.sql.func.min(ts.Run.start_time)). \
+            join(ts.Run).join(ts.Order).join(ts.Test). \
+            filter(ts.Run.machine_id == machine.id). \
+            filter(field.column != None). \
             group_by(ts.Order.llvm_project_revision, ts.Test)
 
         # Calculate geomean of each revision.
-        data = util.multidict(((rev, date), val) for val,rev,date in q).items()
-        data = [(rev, [(lnt.server.reporting.analysis.calc_geomean(vals), date)])
-                for ((rev, date), vals) in data]
+        data = util.multidict(
+            ((rev, date), val) for val, rev, date in q).items()
+        data = [
+            (rev, [(lnt.server.reporting.analysis.calc_geomean(vals), date)])
+            for ((rev, date), vals) in data]
 
         # Sort data points according to revision number.
         data.sort(key=lambda sample: convert_revision(sample[0]))
@@ -1088,8 +1186,8 @@ def v4_graph():
         moving_average_data = []
 
         if normalize_by_median:
-            normalize_by = 1.0/stats.median([min([d[0] for d in values])
-                                           for _,values in data])
+            normalize_by = 1.0 / stats.median([min([d[0] for d in values])
+                                               for _, values in data])
         else:
             normalize_by = 1.0
 
@@ -1099,14 +1197,15 @@ def v4_graph():
             # And the date on which they were taken.
             dates = [data_date[1] for data_date in datapoints]
             # Run where this point was collected.
-            runs = [data_pts[2] for data_pts in datapoints if len(data_pts)==3]
+            runs = [data_pts[2] for data_pts in datapoints if
+                    len(data_pts) == 3]
 
             # When we can, map x-axis to revisions, but when that is too hard
             # use the position of the sample instead.
             rev_x = convert_revision(point_label)
-            x = rev_x[0] if len(rev_x)==1 else pos
+            x = rev_x[0] if len(rev_x) == 1 else pos
 
-            values = [v*normalize_by for v in data]
+            values = [v * normalize_by for v in data]
 
             # Ensure the median value is being used
             values = sorted(values)
@@ -1119,7 +1218,7 @@ def v4_graph():
             if runs:
                 metadata["runID"] = str(runs[agg_index])
             if (cv and isinstance(cv, int) and cv_run and
-                        int(max_revision)<int(point_label)):
+                    int(max_revision) < int(point_label)):
                 metadata["cv"] = True
             if len(graph_datum) > 1:
                 # If there are more than one plot in the graph, also label the
@@ -1131,11 +1230,11 @@ def v4_graph():
             # Add the individual points, if requested.
             # For each point add a text label for the mouse over.
             if not hide_all_points:
-                for i,v in enumerate(values):
+                for i, v in enumerate(values):
                     point_metadata = dict(metadata)
                     point_metadata["date"] = str(dates[i])
                     points_data.append((x, v, point_metadata))
-            
+
             # Add the standard deviation error bar, if requested.
             if show_stddev:
                 mean = stats.mean(values)
@@ -1154,9 +1253,12 @@ def v4_graph():
 
             def compute_moving_average(x, window, average_list, median_list):
                 average_list.append((x, lnt.util.stats.mean(window)))
+
             def compute_moving_median(x, window, average_list, median_list):
                 median_list.append((x, lnt.util.stats.median(window)))
-            def compute_moving_average_and_median(x, window, average_list, median_list):
+
+            def compute_moving_average_and_median(x, window, average_list,
+                                                  median_list):
                 average_list.append((x, lnt.util.stats.mean(window)))
                 median_list.append((x, lnt.util.stats.median(window)))
 
@@ -1173,25 +1275,26 @@ def v4_graph():
                 end_index = min(len_pts, i + moving_window_size)
 
                 window_pts = [x[1] for x in pts[start_index:end_index]]
-                fun(pts[i][0], window_pts, moving_average_data, moving_median_data)
+                fun(pts[i][0], window_pts, moving_average_data,
+                    moving_median_data)
 
         # On the overview, we always show the line plot.
         overview_plots.append({
-                "data" : pts,
-                "color" : util.toColorString(col) })
+            "data": pts,
+            "color": util.toColorString(col)})
 
         # Add the minimum line plot, if requested.
         if show_lineplot:
-            plot = {"data" : pts,
-                    "color" : util.toColorString(col)
+            plot = {"data": pts,
+                    "color": util.toColorString(col)
                     }
             if url:
                 plot["url"] = url
             graph_plots.append(plot)
         # Add regression line, if requested.
         if show_linear_regression:
-            xs = [t for t,v,_ in pts]
-            ys = [v for t,v,_ in pts]
+            xs = [t for t, v, _ in pts]
+            ys = [v for t, v, _ in pts]
 
             # We compute the regression line in terms of a normalized X scale.
             x_min, x_max = min(xs), max(xs)
@@ -1209,29 +1312,29 @@ def v4_graph():
                 info = None
 
             if info is not None:
-                slope, intercept,_,_,_ = info
+                slope, intercept, _, _, _ = info
 
                 reglin_col = [c * .7 for c in col]
                 reglin_pts = [(x_min, 0.0 * slope + intercept),
                               (x_max, 1.0 * slope + intercept)]
                 graph_plots.insert(0, {
-                        "data" : reglin_pts,
-                        "color" : util.toColorString(reglin_col),
-                        "lines" : {
-                            "lineWidth" : 2 },
-                        "shadowSize" : 4 })
+                    "data": reglin_pts,
+                    "color": util.toColorString(reglin_col),
+                    "lines": {
+                        "lineWidth": 2},
+                    "shadowSize": 4})
 
         # Add the points plot, if used.
         if points_data:
-            pts_col = (0,0,0)
-            plot = {"data" : points_data,
-                    "color" : util.toColorString(pts_col),
-                    "lines" : {"show" : False },
-                    "points" : {
-                        "show" : True,
-                        "radius" : .25,
-                        "fill" : True
-                        }
+            pts_col = (0, 0, 0)
+            plot = {"data": points_data,
+                    "color": util.toColorString(pts_col),
+                    "lines": {"show": False},
+                    "points": {
+                        "show": True,
+                        "radius": .25,
+                        "fill": True
+                    }
                     }
             if url:
                 plot['url'] = url
@@ -1239,32 +1342,31 @@ def v4_graph():
 
         # Add the error bar plot, if used.
         if errorbar_data:
-            bar_col = [c*.7 for c in col]
+            bar_col = [c * .7 for c in col]
             graph_plots.append({
-                    "data" : errorbar_data,
-                    "lines" : { "show" : False },
-                    "color" : util.toColorString(bar_col),
-                    "points" : {
-                        "errorbars" : "y",
-                        "yerr" : { "show" : True,
-                                   "lowerCap" : "-",
-                                   "upperCap" : "-",
-                                   "lineWidth" : 1 } } })
+                "data": errorbar_data,
+                "lines": {"show": False},
+                "color": util.toColorString(bar_col),
+                "points": {
+                    "errorbars": "y",
+                    "yerr": {"show": True,
+                             "lowerCap": "-",
+                             "upperCap": "-",
+                             "lineWidth": 1}}})
 
         # Add the moving average plot, if used.
         if moving_average_data:
             col = [0.32, 0.6, 0.0]
             graph_plots.append({
-                    "data" : moving_average_data,
-                    "color" : util.toColorString(col) })
-
+                "data": moving_average_data,
+                "color": util.toColorString(col)})
 
         # Add the moving median plot, if used.
         if moving_median_data:
             col = [0.75, 0.0, 1.0]
             graph_plots.append({
-                    "data" : moving_median_data,
-                    "color" : util.toColorString(col) })
+                "data": moving_median_data,
+                "color": util.toColorString(col)})
 
     if bool(request.args.get('json')):
         json_obj = dict()
@@ -1292,6 +1394,7 @@ def v4_graph():
                            overview_plots=overview_plots, legend=legend,
                            baseline_plots=baseline_plots)
 
+
 @v4_route("/global_status")
 def v4_global_status():
     from lnt.server.ui import util
@@ -1302,7 +1405,7 @@ def v4_global_status():
     fields = dict((f.name, f) for f in metric_fields)
 
     # Get the latest run.
-    latest = ts.query(ts.Run.start_time).\
+    latest = ts.query(ts.Run.start_time). \
         order_by(ts.Run.start_time.desc()).first()
 
     # If we found an entry, use that.
@@ -1338,8 +1441,9 @@ def v4_global_status():
     # also convenient for our computations in the jinja page to have
     # access to
     def get_machine_keys(m):
-        m.css_name = m.name.replace('.','-')
+        m.css_name = m.name.replace('.', '-')
         return m
+
     recent_machines = map(get_machine_keys, recent_machines)
 
     # For each machine, build a table of the machine, the baseline run, and the
@@ -1380,8 +1484,8 @@ def v4_global_status():
 
         # Compute comparison results for each machine.
         row.extend((runinfo.get_run_comparison_result(
-                        run, baseline, test_id, field,
-                        ts.Sample.get_hash_of_binary_field()),
+            run, baseline, test_id, field,
+            ts.Sample.get_hash_of_binary_field()),
                     run.id)
                    for baseline, run in machine_run_info)
 
@@ -1392,7 +1496,7 @@ def v4_global_status():
         test_table.append(row)
 
     # Order the table by worst regression.
-    test_table.sort(key = lambda row: row[1], reverse=True)
+    test_table.sort(key=lambda row: row[1], reverse=True)
 
     return render_template("v4_global_status.html",
                            ts=ts,
@@ -1402,6 +1506,7 @@ def v4_global_status():
                            selected_field=field,
                            selected_revision=revision)
 
+
 @v4_route("/daily_report")
 def v4_daily_report_overview():
     # Redirect to the report for the most recent submitted run's date.
@@ -1409,7 +1514,7 @@ def v4_daily_report_overview():
     ts = request.get_testsuite()
 
     # Get the latest run.
-    latest = ts.query(ts.Run).\
+    latest = ts.query(ts.Run). \
         order_by(ts.Run.start_time.desc()).limit(1).first()
 
     # If we found a run, use it's start time.
@@ -1427,6 +1532,7 @@ def v4_daily_report_overview():
     return redirect(v4_url_for("v4_daily_report",
                                year=date.year, month=date.month, day=date.day,
                                **extra_args))
+
 
 @v4_route("/daily_report/<int:year>/<int:month>/<int:day>")
 def v4_daily_report(year, month, day):
@@ -1460,12 +1566,14 @@ def v4_daily_report(year, month, day):
     return render_template("v4_daily_report.html", ts=ts, report=report,
                            analysis=lnt.server.reporting.analysis)
 
+
 ###
 # Cross Test-Suite V4 Views
 
 def get_summary_config_path():
     return os.path.join(current_app.old_config.tempDir,
                         'summary_report_config.json')
+
 
 @db_route("/summary_report/edit", only_v3=False, methods=('GET', 'POST'))
 def v4_summary_report_ui():
@@ -1488,10 +1596,10 @@ def v4_summary_report_ui():
             config = flask.json.load(f)
     else:
         config = {
-            "machine_names" : [],
-            "orders" : [],
-            "machine_patterns" : [],
-            }
+            "machine_names": [],
+            "orders": [],
+            "machine_patterns": [],
+        }
 
     # Get the list of available test suites.
     testsuites = request.get_db().testsuite.values()
@@ -1502,6 +1610,7 @@ def v4_summary_report_ui():
         if first.isdigit():
             return (int(first), name)
         return (first, name)
+
     all_machines = set()
     all_orders = set()
     for ts in testsuites:
@@ -1515,6 +1624,7 @@ def v4_summary_report_ui():
     return render_template("v4_summary_report_ui.html",
                            config=config, all_machines=all_machines,
                            all_orders=all_orders)
+
 
 @db_route("/summary_report", only_v3=False)
 def v4_summary_report():
@@ -1552,13 +1662,15 @@ You must define a summary report configuration first.""")
 @frontend.route('/rules')
 def rules():
     discovered_rules = lnt.server.db.rules_manager.DESCRIPTIONS
-    return render_template("rules.html",rules=discovered_rules)
+    return render_template("rules.html", rules=discovered_rules)
+
 
 @frontend.route('/log')
 def log():
     async_ops.check_workers(True)
     note("Showing log page.")
     return render_template("log.html")
+
 
 @frontend.route('/debug')
 def debug():
@@ -1575,16 +1687,17 @@ def health():
     if queue_length > 10:
         explode = True
         msg = "Queue too long."
-    
+
     import resource
     stats = resource.getrusage(resource.RUSAGE_SELF)
     mem = stats.ru_maxrss
-    if mem > 1024**3:
+    if mem > 1024 ** 3:
         explode = True
-        msg = "Over memory " + str(mem) + ">" + str(1024**3)
+        msg = "Over memory " + str(mem) + ">" + str(1024 ** 3)
     if explode:
         return msg, 500
     return msg, 200
+
 
 @v4_route("/search")
 def v4_search():

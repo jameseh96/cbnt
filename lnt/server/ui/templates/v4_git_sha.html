@@ -8,7 +8,7 @@
     <script type="text/javascript">
         function get_action(form) {
             var search_sha = document.getElementById("git-sha-search").value;
-            var base_url = {{ v4_url_for("v4_git_sha") }}
+            var base_url = {{ v4_url_for("v4_git_sha", sha="") }}
             form.action =  base_url.toString() + search_sha.toString();
         }
     </script>

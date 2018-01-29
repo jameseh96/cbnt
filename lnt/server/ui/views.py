@@ -665,7 +665,9 @@ def v4_cv_run(id):
 
 @v4_route("/git/search")
 def v4_git_search():
-    return render_template("v4_git_search.html")
+    ts = request.get_testsuite()
+
+    return render_template("v4_git_search.html", ts=ts)
 
 
 @v4_route("/git/<sha>")

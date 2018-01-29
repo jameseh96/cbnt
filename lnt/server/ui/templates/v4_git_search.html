@@ -5,17 +5,18 @@
 {% block title %}Git Search{% endblock %}
 {% block body %}
 
+    <script type="text/javascript">
+        function get_action(form) {
+            form.action =  '{{ v4_url_for("v4_git_sha", sha=document.getElementById("git-sha-search").value) }}'
+        }
+    </script>
+
     <section id="search">
         <h4>Search for Git SHA</h4>
-        <form method="POST" id="form">
-            <input type="text" placeholder="Search..." id="git-sha-search"
-                   required>
+        <form method="POST" onsubmit="get_action(this);">
+            <input type="text" placeholder="Search..." id="git-sha-search" required>
             <button type="submit"><i class="fa fa-search"></i></button>
         </form>
     </section>
-
-    <script type="javascript">
-        document.getElementById("form").action = "{{ v4_url_for('v4_git_sha', sha=document.getElementById('git-sha-search').val()) }}";
-    </script>
 
 {% endblock %}

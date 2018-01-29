@@ -1,0 +1,11 @@
+{% import "utils.html" as utils %}
+
+{% extends "layout.html" %}
+{% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
+{% block title %}Git Search{% endblock %}
+{% block body %}
+
+    <h4>Search for Git SHA</h4>
+    <input type="text" placeholder="Search...">
+
+{% endblock %}

@@ -663,6 +663,11 @@ def v4_cv_run(id):
     )
 
 
+@v4_route("/git/search")
+def v4_git_search():
+    return render_template("v4_git_search.html")
+
+
 @v4_route("/git/<sha>")
 def v4_git_sha(sha):
     def get_gerrit_for_sha(_sha):

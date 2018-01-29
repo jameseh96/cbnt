@@ -663,7 +663,14 @@ def v4_cv_run(id):
     )
 
 
-@v4_route("/git/<sha>")
+@v4_route("/git/search", methods=('GET', 'POST'))
+def v4_git_search():
+    ts = request.get_testsuite()
+
+    return render_template("v4_git_search.html", ts=ts)
+
+
+@v4_route("/git/<sha>", methods=('GET', 'POST'))
 def v4_git_sha(sha):
     def get_gerrit_for_sha(_sha):
         url = ('http://review.couchbase.org/changes/?q={}&o=ALL_REVISIONS&o='

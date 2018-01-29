@@ -1,0 +1,20 @@
+{% import "utils.html" as utils %}
+
+{% extends "layout.html" %}
+{% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
+{% block head %}
+    <script src="{{ url_for('.static', filename='git_search.js') }}"></script>
+{% endblock %}
+{% block title %}Git Search{% endblock %}
+
+{% block body %}
+
+    <section id="search">
+        <h4>Search for Git SHA</h4>
+        <form method="POST" onsubmit="setAction('{{ v4_url_for("v4_git_sha", sha = "") }}')" id="form">
+            <input type="text" placeholder="Search..." id="git-sha-search" required style="width: 50%;">
+            <button type="submit"><i class="icon icon-search" style="margin-bottom: 10px;"></i></button>
+        </form>
+    </section>
+
+{% endblock %}

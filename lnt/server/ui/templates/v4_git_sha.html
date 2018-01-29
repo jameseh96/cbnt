@@ -2,119 +2,134 @@
 
 {% extends "layout.html" %}
 {% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
+{% block head %}
+    <script src="{{ url_for('.static', filename='git_search.js') }}"></script>
+{% endblock %}
 {% block title %}Git SHA runs{% endblock %}
 {% block body %}
 
-    <h3>Performance Runs for <a href="http://review.couchbase.org/#/c/{{ gerrit["_number"] }}" target="_blank">{{ sha }}</a></h3>
-
-    <section id="patch-detail">
-        <h4>Patch Details</h4>
-        <table class="table table-striped table-condensed table-hover">
-            <tr>
-                <td><b>Project</b></td>
-                <td>{{ gerrit["project"] }}</td>
-            </tr>
-            <tr>
-                <td><b>Branch</b></td>
-                <td>{{ gerrit["branch"] }}</td>
-            </tr>
-            <tr>
-                <td><b>Change ID</b></td>
-                <td>{{ gerrit["change_id"] }}</td>
-            </tr>
-            <tr>
-                <td><b>Subject</b></td>
-                <td>{{ gerrit["subject"] }}</td>
-            </tr>
-            <tr>
-                <td><b>Patch Status</b></td>
-                {% if master_orders|length > 0 %}
-                    <td>Merged</td>
-                {% else %}
-                    <td>Outstanding - Commit Validation Only</td>
-                {% endif %}
-            </tr>
-        </table>
+    <section id="search">
+        <h4>Search for Git SHA</h4>
+        <form method="POST" onsubmit="setAction('{{ v4_url_for("v4_git_sha", sha = "") }}')" id="form">
+            <input type="text" placeholder="Search..." id="git-sha-search" required style="width: 50%;">
+            <button type="submit"><i class="icon icon-search" style="margin-bottom: 10px;"></i></button>
+        </form>
     </section>
 
-    {% if master_orders|length > 0 %}
-        <section id="master-runs">
-            {{ utils.render_popup_begin('master-runs', 'Master Runs', true) }}
-            <h4>Master Runs</h4>
-            <table class="table table-striped table-condensed table-hover">
-                <thead>
-                <tr>
-                    <th>Order ID</th>
-                    <th>Run ID</th>
-                    <th>Start Time</th>
-                    <th>Duration</th>
-                    <th>Machine</th>
-                    <th>Results</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for o in master_orders %}
-                    {% for r in ts.query(ts.Run).filter_by(order_id = o.id) %}
-                        <tr>
-                            <td>
-                                <a href="{{ v4_url_for('v4_order', id=o.id) }}">{{ o.id }}</a>
-                            </td>
-                            <td>{{ r.id }}</td>
-                            <td>
-                            <span class="utctime">
-                                {{ r.start_time }}
-                            </span>
-                            </td>
-                            <td>{{ r.end_time - r.start_time }}</td>
-                            <td>{{ utils.render_machine(r.machine) }}</td>
-                            <td>{{ utils.render_result(r) }}</td>
-                        </tr>
-                    {% endfor %}
-                {% endfor %}
-                </tbody>
-            </table>
-        {{ utils.render_popup_end() }}
-        </section>
-    {% endif %}
+    <section id="results">
+        <h3>Performance Runs for <a
+                href="http://review.couchbase.org/#/c/{{ gerrit["_number"] }}"
+                target="_blank">{{ sha }}</a></h3>
 
-    {% if cv_orders|length > 0 %}
-        <section id="cv-runs">
-            {{ utils.render_popup_begin('cv-runs', 'Commit Validation Runs', true) }}
-            <h4>Commit Validation Runs</h4>
+        <section id="patch-detail">
+            <h4>Patch Details</h4>
             <table class="table table-striped table-condensed table-hover">
-                <thead>
                 <tr>
-                    <th>CV Order ID</th>
-                    <th>CV Run ID</th>
-                    <th>Start Time</th>
-                    <th>Duration</th>
-                    <th>Machine</th>
-                    <th>Results</th>
+                    <td><b>Project</b></td>
+                    <td>{{ gerrit["project"] }}</td>
                 </tr>
-                </thead>
-                <tbody>
-                {% for o in cv_orders %}
-                    {% for r in ts.query(ts.CVRun).filter_by(order_id = o.id) %}
-                        <tr>
-                            <td>
-                                <a href="{{ v4_url_for('v4_cv_order', id=o.id) }}">{{ o.id }}</a>
-                            </td>
-                            <td>{{ r.id }}</td>
-                            <td>
+                <tr>
+                    <td><b>Branch</b></td>
+                    <td>{{ gerrit["branch"] }}</td>
+                </tr>
+                <tr>
+                    <td><b>Change ID</b></td>
+                    <td>{{ gerrit["change_id"] }}</td>
+                </tr>
+                <tr>
+                    <td><b>Subject</b></td>
+                    <td>{{ gerrit["subject"] }}</td>
+                </tr>
+                <tr>
+                    <td><b>Patch Status</b></td>
+                    {% if master_orders|length > 0 %}
+                        <td>Merged</td>
+                    {% else %}
+                        <td>Outstanding - Commit Validation Only</td>
+                    {% endif %}
+                </tr>
+            </table>
+        </section>
+
+        {% if master_orders|length > 0 %}
+            <section id="master-runs">
+                {{ utils.render_popup_begin('master-runs', 'Master Runs', true) }}
+                <h4>Master Runs</h4>
+                <table class="table table-striped table-condensed table-hover">
+                    <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Run ID</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Machine</th>
+                        <th>Results</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for o in master_orders %}
+                        {% for r in ts.query(ts.Run).filter_by(order_id = o.id) %}
+                            <tr>
+                                <td>
+                                    <a href="{{ v4_url_for('v4_order', id=o.id) }}">{{ o.id }}</a>
+                                </td>
+                                <td>{{ r.id }}</td>
+                                <td>
                             <span class="utctime">
                                 {{ r.start_time }}
                             </span>
-                            </td>
-                            <td>{{ r.end_time - r.start_time }}</td>
-                            <td>{{ utils.render_machine(r.machine) }}</td>
-                            <td>{{ utils.render_cv_result(r) }}</td>
-                        </tr>
+                                </td>
+                                <td>{{ r.end_time - r.start_time }}</td>
+                                <td>{{ utils.render_machine(r.machine) }}</td>
+                                <td>{{ utils.render_result(r) }}</td>
+                            </tr>
+                        {% endfor %}
                     {% endfor %}
-                {% endfor %}
-                </tbody>
-            </table>
-        {{ utils.render_popup_end() }}
-        </section>
-    {% endif %}
+                    </tbody>
+                </table>
+                {{ utils.render_popup_end() }}
+            </section>
+        {% endif %}
+
+        {% if cv_orders|length > 0 %}
+            <section id="cv-runs">
+                {{ utils.render_popup_begin('cv-runs', 'Commit Validation Runs', true) }}
+                <h4>Commit Validation Runs</h4>
+                <table class="table table-striped table-condensed table-hover">
+                    <thead>
+                    <tr>
+                        <th>CV Order ID</th>
+                        <th>CV Run ID</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Machine</th>
+                        <th>Results</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for o in cv_orders %}
+                        {% for r in ts.query(ts.CVRun).filter_by(order_id = o.id) %}
+                            <tr>
+                                <td>
+                                    <a href="{{ v4_url_for('v4_cv_order', id=o.id) }}">{{ o.id }}</a>
+                                </td>
+                                <td>{{ r.id }}</td>
+                                <td>
+                            <span class="utctime">
+                                {{ r.start_time }}
+                            </span>
+                                </td>
+                                <td>{{ r.end_time - r.start_time }}</td>
+                                <td>{{ utils.render_machine(r.machine) }}</td>
+                                <td>{{ utils.render_cv_result(r) }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {{ utils.render_popup_end() }}
+            </section>
+        {% endif %}
+    </section>
 
 {% endblock %}

@@ -7,9 +7,17 @@
 
     <section id="search">
         <h4>Search for Git SHA</h4>
-        <input type="text" placeholder="Search...">
+        <form method="POST" id="form">
+            <input type="text" placeholder="Search..." id="git-sha-search"
+                   required>
+            <button type="submit"><i class="fa fa-search"></i></button>
+        </form>
     </section>
 
+    <script type="javascript">
+        document.getElementById("form").action = "{{ v4_url_for('v4_git_sha', sha=document.getElementById('git-sha-search').val() }}";
+    </script>
+    
     <section id="results">
         <h3>Performance Runs for <a
                 href="http://review.couchbase.org/#/c/{{ gerrit["_number"] }}"

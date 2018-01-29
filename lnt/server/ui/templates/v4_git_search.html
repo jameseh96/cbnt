@@ -7,17 +7,19 @@
     <section id="search">
         <h4>Search for Git SHA</h4>
         <form method="POST" onsubmit="setAction()" id="form">
-            <input type="text" placeholder="Search..." id="git-sha-search" required>
+            <input type="text" placeholder="Search..." id="git-sha-search"
+                   required>
             <button type="submit"><i class="icon icon-search"></i></button>
         </form>
+
+        <script>
+            function setAction() {
+                var search_sha = document.getElementById("git-sha-search").value;
+                var base_url = {{ v4_url_for("v4_git_sha", sha="") }};
+                console.log(base_url.toString() + search_sha.toString());
+                document.getElementById("form").action = base_url.toString() + search_sha.toString();
+            }
+        </script>
     </section>
 
-    <script type="text/javascript">
-        function setAction() {
-            var search_sha = document.getElementById("git-sha-search").value;
-            var base_url = {{ v4_url_for("v4_git_sha", sha="") }};
-            console.log(base_url.toString() + search_sha.toString());
-            document.getElementById("form").action =  base_url.toString() + search_sha.toString();
-        }
-    </script>
 {% endblock %}

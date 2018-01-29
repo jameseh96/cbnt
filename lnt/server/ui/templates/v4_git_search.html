@@ -7,7 +7,8 @@
 
     <script type="text/javascript">
         function get_action(form) {
-            form.action =  '{{ v4_url_for("v4_git_sha", sha=document.getElementById("git-sha-search").value) }}'
+            var search_sha = document.getElementById("git-sha-search").value;
+            form.action =  '{{ v4_url_for("v4_git_sha", sha=search_sha) }}';
         }
     </script>
 

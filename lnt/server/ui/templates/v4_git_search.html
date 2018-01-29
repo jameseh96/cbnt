@@ -15,7 +15,7 @@
     </section>
 
     <script type="javascript">
-        document.getElementById("form").action = "{{ v4_url_for('v4_git_sha', sha=document.getElementById('git-sha-search').val() }}";
+        document.getElementById("form").action = "{{ v4_url_for('v4_git_sha', sha=document.getElementById('git-sha-search').val()) }}";
     </script>
 
 {% endblock %}

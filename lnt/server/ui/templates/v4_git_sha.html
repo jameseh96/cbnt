@@ -6,18 +6,19 @@
 {% block body %}
 
     <script type="text/javascript">
-        function get_action(form) {
+        function setAction() {
             var search_sha = document.getElementById("git-sha-search").value;
-            var base_url = {{ v4_url_for("v4_git_sha", sha="") }}
-            form.action =  base_url.toString() + search_sha.toString();
+            var base_url = {{ v4_url_for("v4_git_sha", sha="") }};
+            console.log(base_url.toString() + search_sha.toString());
+            document.getElementById("form").action =  base_url.toString() + search_sha.toString();
         }
     </script>
 
     <section id="search">
         <h4>Search for Git SHA</h4>
-        <form method="POST" onsubmit="get_action(this);">
+        <form method="POST" onsubmit="setAction()" id="form">
             <input type="text" placeholder="Search..." id="git-sha-search" required>
-            <button type="submit"><i class="fa fa-search"></i></button>
+            <button type="submit"><i class="icon icon-search"></i></button>
         </form>
     </section>
 

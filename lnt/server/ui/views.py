@@ -696,6 +696,7 @@ def v4_git_sha(sha):
 
     gerrit_response = get_gerrit_for_sha(sha)
     change_id = gerrit_response["change_id"]
+    merged = gerrit_response["status"]
 
     patch_shas = []
     for revision in gerrit_response['revisions']:
@@ -759,7 +760,8 @@ def v4_git_sha(sha):
 
     return render_template("v4_git_sha.html", ts=ts, sha=sha,
                            gerrit=gerrit_response,
-                           master_orders=master_orders, cv_orders=cv_orders)
+                           master_orders=master_orders, cv_orders=cv_orders,
+                           merged=merged)
 
 
 @v4_route("/test_status")

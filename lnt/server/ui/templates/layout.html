@@ -22,7 +22,7 @@
 
   <!-- DataTables CSS -->
   <link rel="stylesheet" type="text/css" href="//cdn.datatables.net/1.10.8/css/jquery.dataTables.css" />
-                 
+
    <!-- DataTables -->
    <script type="text/javascript" charset="UTF-8" src="//cdn.datatables.net/1.10.8/js/jquery.dataTables.js">
    </script>
@@ -84,7 +84,7 @@
     tr:hover .profile-btn {
       visibility: visible;
     }
-    
+
   </style>
 
   <link rel="icon" type="image/png" href="{{ url_for('.static', filename='favicon.ico') }}"/>
@@ -159,8 +159,9 @@
                               <li><a href="{{ v4_url_for('v4_global_status') }}">Global Status</a></li>
                               <li><a href="{{ v4_url_for('v4_daily_report_overview') }}">Daily Report</a></li>
                               <li><a href="{{ v4_url_for('v4_machines') }}">All Machines</a></li>
-                                <li><a href="{{ v4_url_for('v4_git_search') }}">Git Search</a></li>
-                               <li class="divider"></li>
+                              <li><a href="{{ v4_url_for('v4_git_search') }}">Git Search</a></li>
+                              <li><a href="{{ v4_url_for('v4_test_status') }}">Test Status </a></li>
+                              <li class="divider"></li>
                               <li class="disabled"><a href="#">Changes</a></li>
                               <li><a href="{{ v4_url_for('v4_regression_list', state=0) }}">Detected</a></li>
                               <li><a href="{{ v4_url_for('v4_regression_list', state=1) }}">Staged</a></li>
@@ -189,7 +190,7 @@
                     </li>
                 </ul>
 
-                
+
 
             </div>
             <div>
@@ -210,7 +211,7 @@
           <pre>{{g.db_log.getvalue()}}</pre>
         </div>
         {% endif %}
-        
+
 
         {# Page Content #}
         <div id="content" class="container-fluid">
@@ -223,18 +224,18 @@
                         </div>
                         {% endfor %}
                 {% endif %}
-            {% endwith %} 
-        
+            {% endwith %}
+
             {% if nosidebar is defined %}
                 <div class="row">
                     <div id="page-content" class="span12">
             {% else %}
                 <div id ="side-bar" class="span3 bs-docs-sidebar ">
-                 {% block sidebar %}{% endblock %} 
+                 {% block sidebar %}{% endblock %}
                 </div>
                     <div id="page-content" class="span9">
             {% endif %}
-          
+
                         {% block body %}{% endblock %}
                     </div>
                 {% if nosidebar is defined %}

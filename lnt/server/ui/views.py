@@ -762,6 +762,17 @@ def v4_git_sha(sha):
                            master_orders=master_orders, cv_orders=cv_orders)
 
 
+@v4_route("/test_status")
+def v4_test_status():
+    ts = request.get_testsuite()
+
+    test_status, latest_order, latest_run, tests = ts.get_test_status(10)
+
+    return render_template("v4_test_status.html", ts=ts, status=test_status,
+                           order=latest_order, run=latest_run, tests=tests,
+                           metric_fields=list(ts.Sample.get_metric_fields()))
+
+
 @v4_route("/order/<int:id>")
 def v4_order(id):
     # Get the testsuite.

@@ -9,6 +9,7 @@ import datetime
 import json
 import os
 import urllib2
+from collections import OrderedDict
 
 import sqlalchemy
 from sqlalchemy import *
@@ -1470,3 +1471,49 @@ test %r is misnamed for reporting under schema %r""" % (
                        field_change.end_order_id in order_ids
                        for field_change in field_changes_for_test)
 
+    def get_test_status(self, stability_threshold):
+        test_status = OrderedDict()
+
+        latest_order = (self.query(self.Order).
+                        filter(self.Order.id == self._get_max_run_order()).
+                        first())
+
+        latest_run = (self.query(self.Run).
+                      filter(self.Run.order == latest_order).first())
+
+        tests = (self.query(self.Sample).
+                 filter(self.Sample.run == latest_run).all())
+
+        test_ids = set()
+
+        for test in tests:
+            test_ids.add(test.test_id)
+
+        for test_id in test_ids:
+            field_changes_for_test = self.query(self.FieldChange).filter(
+                self.FieldChange.test_id == test_id).all()
+
+            orders_for_test = self.query(self.Order).join(self.Run).join(
+                self.Sample).filter(
+                self.Sample.test_id == test_id).distinct().all()
+            orders_for_test.sort()
+
+            try:
+                run_index = orders_for_test.index(latest_run.order)
+            except ValueError:
+                test_status[test_id] = True
+
+            orders_within_threshold = (orders_for_test[
+                                       max(0, run_index - stability_threshold):
+                                       run_index + 1])
+
+            if len(orders_within_threshold) < stability_threshold:
+                test_status[test_id] = False
+
+            order_ids = [order.id for order in orders_within_threshold]
+            test_status[test_id] = not any(
+                field_change.start_order_id in order_ids
+                or field_change.end_order_id in order_ids
+                for field_change in field_changes_for_test)
+
+        return test_status, latest_order, latest_run, tests

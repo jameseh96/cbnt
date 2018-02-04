@@ -50,6 +50,8 @@
       <th>Duration</th>
       <th>Machine</th>
       <th>Results</th>
+      <th>Report</th>
+      <th>Text Report</th>
     </tr>
     </thead>
     <tbody>
@@ -61,6 +63,9 @@
         <td>{{ r.end_time - r.start_time }}</td>
         <td>{{ utils.render_machine(r.machine) }}</td>
         <td>{{ utils.render_result(r) }}</td>
+        <td><a href="{{ v4_url_for('v4_report', id=r.id) }}">View Report</a></td>
+        <td><a href="{{ v4_url_for('v4_text_report', id=r.id) }}">View Text Report</a></td>
+        <td></td>
       </tr>
       {% endfor %}
     </tbody>
@@ -76,6 +81,7 @@
       <th>Duration</th>
       <th>Machine</th>
       <th>Results</th>
+      <th>Report</th>
     </tr>
     </thead>
     <tbody>
@@ -87,6 +93,7 @@
         <td>{{ r.end_time - r.start_time }}</td>
         <td>{{ utils.render_machine(r.machine) }}</td>
         <td>{{ utils.render_cv_result(r) }}</td>
+        <td><a href="{{ v4_url_for('v4_cv_report', id=r.id) }}">View Report</a></td>
       </tr>
       {% endfor %}
     </tbody>

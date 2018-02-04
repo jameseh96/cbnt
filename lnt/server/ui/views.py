@@ -449,7 +449,7 @@ def v4_report(id):
     return make_response(info.html_report)
 
 
-@v4_route("/<int:id>/report")
+@v4_route("/cv/<int:id>/report")
 def v4_cv_report(id):
     info = V4CVRequestInfo(id, only_html_body=False)
 

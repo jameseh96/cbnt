@@ -377,7 +377,7 @@ def v4_make_regression(machine_id, test_id, field_index, run_id):
     runinfo = lnt.server.reporting.analysis.RunInfo(ts, runs_to_load)
 
     result = runinfo.get_comparison_result(
-        runs, previous_runs, test_id, field, ts.Sample.get_hash_of_binary_field)
+        runs, previous_runs, test_id, field, ts.Sample.get_hash_of_binary_field())
 
     # Try and find a matching FC and update, else create one.
     f = None

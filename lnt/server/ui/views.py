@@ -772,7 +772,11 @@ def v4_test_status():
 
     return render_template("v4_test_status.html", ts=ts, status=test_status,
                            order=latest_order, run=latest_run, tests=tests,
-                           metric_fields=list(ts.Sample.get_metric_fields()))
+                           metric_fields=list(ts.Sample.get_metric_fields()),
+                           num_stable=sum(
+                               1 for c in test_status.values() if c),
+                           num_unstable=sum(
+                               1 for c in test_status.values() if not c))
 
 
 @v4_route("/order/<int:id>")

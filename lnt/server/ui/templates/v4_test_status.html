@@ -8,6 +8,9 @@
 {% block body %}
 
     <h3>Latest Master Test Status</h3>
+    <p>This page gives a summary of each test's status, based on the latest
+        master submission.</p>
+    <br>
 
     <section id="run_info">
         {{ utils.render_popup_begin('run_info', 'Run Info', true) }}
@@ -56,8 +59,37 @@
         {{ utils.render_popup_end() }}
     </section>
 
+    <section id="test_summary">
+        {{ utils.render_popup_begin('test_summary', 'Test Summary', false) }}
+        <h4>Test Summary</h4>
+        <table class="table table-striped table-condensed table-hover">
+            <thead>
+            <tr>
+                <th>Status</th>
+                <th>Count</th>
+                <th>%</th>
+            </tr>
+            </thead>
+            <tr>
+                <td><b>Stable</b></td>
+                <td>{{ num_stable }}</td>
+                <td>{{ ((num_stable / status|length) * 100)|int }}</td>
+            </tr>
+            <tr>
+                <td><b>Unstable</b></td>
+                <td>{{ num_unstable }}</td>
+                <td>{{ ((num_unstable / status|length) * 100)|int }}</td>
+            </tr>
+            <tr></tr>
+            <tr>
+                <td><b>Total</b></td>
+                <td>{{ status|length }}</td>
+            </tr>
+        </table>
+    </section>
+
     <section id="test_details">
-        {{ utils.render_popup_begin('test_details', 'Test Details', false) }}
+        {{ utils.render_popup_begin('test_details', 'Test Details', true) }}
         <h4>Test Details</h4>
         {% for field in metric_fields %}
             <table class="table table-condensed table-hover">
@@ -70,11 +102,11 @@
                 </thead>
                 {% for test_id in status %}
                     <tr>
-                    {% if status[test_id] == True %}
-                    <td bgcolor="#7fff00">
-                    {% else %}
-                    <td bgcolor="#ff4500">
-                    {% endif %}
+                        {% if status[test_id] == True %}
+                            <td bgcolor="#7fff00">
+                                {% else %}
+                            <td bgcolor="#ff4500">
+                        {% endif %}
                         {{ test_id }}</td>
                         <td class="benchmark-name">
                             <a href="{{ graph_base }}&amp;plot.{{ test_id }}={{ machine.id }}.{{ test_id }}.{{ field.index }}">

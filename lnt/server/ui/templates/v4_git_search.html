@@ -2,23 +2,18 @@
 
 {% extends "layout.html" %}
 {% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
-{% block title %}Git Search{% endblock %}
-
-{% block javascript %}
-    function setAction() {
-    var search_sha = document.getElementById("git-sha-search").value;
-    var base_url = {{ v4_url_for("v4_git_sha", sha="") }};
-    console.log(base_url.toString() + search_sha.toString());
-    document.getElementById("form").action = base_url.toString() + search_sha.toString();
-    }
+{% block head %}
+    <script src="{{ url_for('.static', filename='popup.js') }}"></script>
 {% endblock %}
+{% block title %}Git Search{% endblock %}
 
 {% block body %}
 
     <section id="search">
         <h4>Search for Git SHA</h4>
-        <form method="POST" onsubmit="setAction()" id="form">
-            <input type="text" placeholder="Search..." id="git-sha-search" required>
+        <form method="POST" onsubmit="setAction('{{ v4_url_for("v4_git_sha", sha = "") }}')" id="form">
+            <input type="text" placeholder="Search..." id="git-sha-search"
+                   required>
             <button type="submit"><i class="icon icon-search"></i></button>
         </form>
     </section>

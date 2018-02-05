@@ -4,6 +4,9 @@
 {% set machine = run.machine %}
 {% set graph_base=v4_url_for('v4_graph', highlight_run=run.id) %}
 {% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
+{% block head %}
+    <script src="{{ url_for('.static', filename='sorttable.js') }}"></script>
+{% endblock %}
 {% block title %}Latest Test Status{% endblock %}
 {% block body %}
 

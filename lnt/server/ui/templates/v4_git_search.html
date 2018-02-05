@@ -3,16 +3,17 @@
 {% extends "layout.html" %}
 {% set components = [(ts.name, v4_url_for("v4_recent_activity"))] %}
 {% block title %}Git Search{% endblock %}
-{% block body %}
 
-    {% block javascript %}
-        function setAction() {
-            var search_sha = document.getElementById("git-sha-search").value;
-            var base_url = {{ v4_url_for("v4_git_sha", sha="") }};
-            console.log(base_url.toString() + search_sha.toString());
-            document.getElementById("form").action = base_url.toString() + search_sha.toString();
-        }
-    {% endblock %}
+{% block javascript %}
+    function setAction() {
+    var search_sha = document.getElementById("git-sha-search").value;
+    var base_url = {{ v4_url_for("v4_git_sha", sha="") }};
+    console.log(base_url.toString() + search_sha.toString());
+    document.getElementById("form").action = base_url.toString() + search_sha.toString();
+    }
+{% endblock %}
+
+{% block body %}
 
     <section id="search">
         <h4>Search for Git SHA</h4>

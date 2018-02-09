@@ -25,12 +25,14 @@
                 <th>Value</th>
             </tr>
             </thead>
+            <tbody>
             {% for item in run.fields %}
                 <tr>
                     <td><b>{{ item.name }}</b></td>
                     <td>{{ run.get_field(item) }}</td>
                 </tr>
             {% endfor %}
+            </tbody>
         </table>
 
         <h4>Parameters</h4>
@@ -41,6 +43,7 @@
                 <th>Value</th>
             </tr>
             </thead>
+            <tbody>
             {% for key,value in run.parameters|dictsort(case_sensitive=True) %}
                 <tr>
                     <td><b>{{ key }}</b></td>
@@ -58,6 +61,7 @@
                     {% endif %}
                 </tr>
             {% endfor %}
+            </tbody>
         </table>
         {{ utils.render_popup_end() }}
     </section>
@@ -73,6 +77,7 @@
                 <th>%</th>
             </tr>
             </thead>
+            <tbody>
             <tr>
                 <td><b>Stable</b></td>
                 <td>{{ num_stable }}</td>
@@ -88,6 +93,7 @@
                 <td><b>Total</b></td>
                 <td>{{ status|length }}</td>
             </tr>
+            </tbody>
         </table>
     </section>
 
@@ -95,17 +101,19 @@
         {{ utils.render_popup_begin('test_details', 'Test Details', true) }}
         <h4>Test Details</h4>
         {% for field in metric_fields %}
-            <table class="table table-condensed table-hover sorted">
+            <table class="table table-condensed table-hover sortable">
                 <thead>
                 <tr>
                     <th>Test ID</th>
                     <th>Test Name</th>
                     <th>Test Status</th>
+                    <th>Number of Stable Runs</th>
                 </tr>
                 </thead>
+                <tbody class="searchable">
                 {% for test_id in status %}
                     <tr>
-                        {% if status[test_id] == True %}
+                        {% if status[test_id]["stable"] == True %}
                             <td bgcolor="#7fff00">
                                 {% else %}
                             <td bgcolor="#ff4500">
@@ -117,14 +125,18 @@
                             </a>
                         </td>
                         <td>
-                            {% if status[test_id] == True %}
+                            {% if status[test_id]["stable"] == True %}
                                 Stable
                             {% else %}
                                 Unstable
                             {% endif %}
                         </td>
+                        <td>
+                            {{ status[test_id]["stable_for"] }}
+                        </td>
                     </tr>
                 {% endfor %}
+                </tbody>
             </table>
         {% endfor %}
     </section>

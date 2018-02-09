@@ -1490,6 +1490,7 @@ test %r is misnamed for reporting under schema %r""" % (
             test_ids.add(test.test_id)
 
         for test_id in test_ids:
+            test_status[test_id] = {}
             field_changes_for_test = self.query(self.FieldChange).filter(
                 self.FieldChange.test_id == test_id).all()
 
@@ -1501,19 +1502,34 @@ test %r is misnamed for reporting under schema %r""" % (
             try:
                 run_index = orders_for_test.index(latest_run.order)
             except ValueError:
-                test_status[test_id] = True
+                test_status[test_id]["stable"] = True
+                continue
 
             orders_within_threshold = (orders_for_test[
                                        max(0, run_index - stability_threshold):
                                        run_index + 1])
 
             if len(orders_within_threshold) < stability_threshold:
-                test_status[test_id] = False
+                test_status[test_id]["stable"] = False
+                continue
 
             order_ids = [order.id for order in orders_within_threshold]
-            test_status[test_id] = not any(
+            test_status[test_id]["stable"] = not any(
                 field_change.start_order_id in order_ids
                 or field_change.end_order_id in order_ids
                 for field_change in field_changes_for_test)
+
+        for test_id in test_ids:
+            if test_status[test_id]["stable"]:
+                regressions = self.query(self.Regression).join(self.RegressionIndicator).join(self.FieldChange).filter(self.FieldChange.test_id == test_id).order_by(self.Regression.id.desc()).all()
+                regression_id = max(r.id for r in regressions) if regressions else -1
+                if regression_id > 0:
+                    regression_ind = self.query(self.RegressionIndicator).join(self.Regression).filter(self.Regression.id == regression_id).first()
+                    regressed_run = regression_ind.field_change.run
+                    test_status[test_id]["stable_for"] = latest_run.id - regressed_run.id
+                else:
+                    test_status[test_id]["stable_for"] = latest_run.id
+            else:
+                test_status[test_id]["stable_for"] = "N/A"
 
         return test_status, latest_order, latest_run, tests

@@ -95,6 +95,12 @@ def mannwhitneyu_small(a, b, sigLevel):
     same = U <= SIGN_TABLES[sigLevel][len(a) - 1][len(b) - 1]
     return same
 
+
+def variance(l, m=None):
+    if m is None:
+        m = mean(l)
+    return (sum((a - m) ** 2 for a in l)) / (len(l) - 1)
+
 # Table for .10 significance level.
 TABLE_0_10 = [
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],

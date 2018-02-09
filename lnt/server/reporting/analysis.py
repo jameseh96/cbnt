@@ -101,14 +101,20 @@ class ComparisonResult:
         if samples and len(samples) > 1 and isinstance(samples[0], float):
             self.stddev = stats.standard_deviation(samples)
             self.MAD = stats.median_absolute_deviation(samples)
+            self.variance = stats.variance(samples)
         else:
             self.stddev = None
             self.MAD = None
+            self.variance = None
 
         if prev_samples and len(prev_samples) > 1 and isinstance(prev_samples[0], float):
             self.prev_stddev = stats.standard_deviation(prev_samples)
+            self.prev_MAD = stats.median_absolute_deviation(prev_samples)
+            self.prev_variance = stats.variance(prev_samples)
         else:
             self.prev_stddev = None
+            self.prev_MAD = None
+            self.prev_variance = None
 
         self.stddev_mean = None  # Only calculate this if needed.
         self.failed = cur_failed

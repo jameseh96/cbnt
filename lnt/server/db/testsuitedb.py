@@ -338,6 +338,7 @@ class TestSuiteDB(object):
                 # Compare every field in lexicographic order.
                 return int(self.llvm_project_revision) - int(b.llvm_project_revision)
 
+
             def __json__(self, include_id=True):
                 result = {}
                 if include_id:

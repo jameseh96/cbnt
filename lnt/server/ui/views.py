@@ -1344,6 +1344,7 @@ def v4_graph():
     graph_datum = []
     overview_plots = []
     baseline_plots = []
+    revision_cache = {}
     num_plots = len(graph_parameters)
 
     for i, (machine, test, field, field_index) in enumerate(graph_parameters):
@@ -1391,7 +1392,7 @@ def v4_graph():
                                                       for val, date, run_id in
                                                       q_cv]))
 
-        data.sort(key=lambda sample: convert_revision(sample[0]))
+        data.sort(key=lambda sample: convert_revision(sample[0], cache=revision_cache))
 
         graph_datum.append((test.name, data, col, field, url))
 

@@ -1533,12 +1533,11 @@ def v4_graph():
         # Compute the moving average and or moving median of our data if
         # requested.
         if moving_average or moving_median:
-            fun = None
 
-            def compute_moving_average(x, window, average_list, median_list):
+            def compute_moving_average(x, window, average_list, _):
                 average_list.append((x, lnt.util.stats.mean(window)))
 
-            def compute_moving_median(x, window, average_list, median_list):
+            def compute_moving_median(x, window, _, median_list):
                 median_list.append((x, lnt.util.stats.median(window)))
 
             def compute_moving_average_and_median(x, window, average_list,
@@ -1877,7 +1876,6 @@ def v4_daily_report(year, month, day):
 
     filter_machine_regex = request.args.get('filter-machine-regex')
 
-    session = request.session
     ts = request.get_testsuite()
 
     # Create the report object.

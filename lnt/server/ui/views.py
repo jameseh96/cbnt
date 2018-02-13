@@ -36,7 +36,9 @@ import lnt.server.ui.util
 import lnt.util
 import lnt.util.ImportData
 import lnt.util.stats
+from lnt.external.stats import stats as ext_stats
 from lnt.server.reporting.analysis import ComparisonResult, calc_geomean
+from lnt.server.ui import util
 from lnt.server.ui.decorators import frontend, db_route, v4_route
 from lnt.testing.util.commands import warning, error, note
 import lnt.server.ui.util
@@ -47,11 +49,12 @@ import lnt.server.db.search
 from lnt.server.ui.globals import db_url_for, v4_url_for
 from lnt.server.ui.util import FLASH_DANGER, FLASH_SUCCESS, FLASH_INFO
 from lnt.server.ui.util import PrecomputedCR
+from lnt.server.ui.util import baseline_key, convert_revision
 from lnt.server.ui.util import mean
-
+from lnt.testing import PASS
 from lnt.util import logger
 from lnt.util import multidict
-from lnt.server.ui.util import baseline_key, convert_revision
+from lnt.util import stats
 
 integral_rex = re.compile(r"[\d]+")
 cv_sha_regex = re.compile('h=(?P<sha>[0-9A-z]+)')
@@ -315,7 +318,6 @@ def v4_machine_compare(machine_id):
 def v4_machine(id):
 
     # Compute the list of associated runs, grouped by order.
-    from lnt.server.ui import util
 
     # Gather all the runs on this machine.
     session = request.session
@@ -1137,10 +1139,6 @@ def v4_graph_for_sample(sample_id, field_name):
 
 @v4_route("/graph")
 def v4_graph():
-    from lnt.server.ui import util
-    from lnt.testing import PASS
-    from lnt.util import stats
-    from lnt.external.stats import stats as ext_stats
 
     session = request.session
     ts = request.get_testsuite()
@@ -1376,8 +1374,8 @@ def v4_graph():
                              (field.status_field.column.is_(None)))
 
         # Aggregate by revision.
-        data = multidict.multidict(
-            (rev, (val, date, run_id)) for val, rev, date, run_id in q).items()
+        data = multidict.multidict((rev, (val, date, run_id))
+                           for val, rev, date, run_id in q).items()
 
         # If CV result, add it to the data points
         if cv and isinstance(cv, int) and cv_run:
@@ -1702,8 +1700,6 @@ def v4_graph():
 
 @v4_route("/global_status")
 def v4_global_status():
-    from lnt.server.ui import util
-
     session = request.session
     ts = request.get_testsuite()
     metric_fields = sorted(list(ts.Sample.get_metric_fields()),

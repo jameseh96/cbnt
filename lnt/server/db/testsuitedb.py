@@ -24,6 +24,7 @@ import testsuite
 import lnt.testing.profile.profile as profile
 from lnt.testing.util.commands import fatal
 import lnt
+from lnt.server.ui.util import convert_revision
 
 
 def strip(obj):
@@ -266,6 +267,7 @@ class TestSuiteDB(object):
             join = 'Order.previous_order_id==Order.id'
             next_order = relation("Order", backref=backref, primaryjoin=join,
                                   uselist=False)
+            order_name_cache = {}
 
             # Dynamically create fields for all of the test suite defined order
             # fields.
@@ -335,7 +337,6 @@ class TestSuiteDB(object):
 
                 # Compare every field in lexicographic order.
                 return int(self.llvm_project_revision) - int(b.llvm_project_revision)
-
 
             def __json__(self, include_id=True):
                 result = {}

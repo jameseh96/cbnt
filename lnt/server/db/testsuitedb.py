@@ -117,22 +117,22 @@ class TestSuiteDB(object):
             @parameters.setter
             def parameters(self, data):
                 self.parameters_data = json.dumps(sorted(data.items()))
-            
+
             def get_baseline_run(self):
                 baseline = Machine.DEFAULT_BASELINE_REVISION
                 return self.get_closest_previously_reported_run(baseline)
-            
+
             def get_closest_previously_reported_run(self, revision):
                 """
                 Find the closest previous run to the requested order, for which
                 this machine also reported.
                 """
-                
+
                 # FIXME: Scalability! Pretty fast in practice, but
                 # still pretty lame.
-                
+
                 ts = Machine.testsuite
-                
+
                 # If we have an int, convert it to a proper string.
                 if isinstance(revision, int):
                     revision = '% 7d' % revision
@@ -157,9 +157,9 @@ class TestSuiteDB(object):
                         .filter(ts.Run.machine_id == self.id)\
                         .filter(ts.Run.order_id == best_order.id)\
                         .order_by(ts.Run.start_time.desc()).first()
-                
+
                 return closest_run
-            
+
             def __json__(self):
                 return strip(self.__dict__) # {u'name': self.name, u'MachineID': self.id}
 
@@ -189,7 +189,7 @@ class TestSuiteDB(object):
                                                                                 remote_side=id),
                                                  primaryjoin='Order.previous_order_id==Order.id',
                                                  uselist=False)
-            
+
             # Dynamically create fields for all of the test suite defined order
             # fields.
             class_dict = locals()
@@ -254,13 +254,13 @@ class TestSuiteDB(object):
 
                 # Compare every field in lexicographic order.
                 return int(self.llvm_project_revision) - int(b.llvm_project_revision)
-                                 
+
             def __json__(self):
                 order = dict((item.name, self.get_field(item))
                               for item in self.fields)
                 order[u'id'] = self.id
                 return strip(order)
-                
+
         class CVOrder(self.base, ParameterizedMixin):
             __tablename__ = db_key_name + '_CV_Order'
 
@@ -398,7 +398,7 @@ class TestSuiteDB(object):
             @parameters.setter
             def parameters(self, data):
                 self.parameters_data = json.dumps(sorted(data.items()))
-                
+
             def __json__(self):
                 self.machine
                 self.order
@@ -416,7 +416,7 @@ class TestSuiteDB(object):
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,
                                     (self.name,))
-                                    
+
             def __json__(self):
                 return strip(self.__dict__)
 
@@ -514,7 +514,7 @@ class TestSuiteDB(object):
 
             def load(self, profileDir):
                 return profile.Profile.fromFile(os.path.join(profileDir, self.filename))
-            
+
         class Sample(self.base, ParameterizedMixin):
             __tablename__ = db_key_name + '_Sample'
 
@@ -525,7 +525,7 @@ class TestSuiteDB(object):
             run_id = Column("RunID", Integer, ForeignKey(Run.id))
             test_id = Column("TestID", Integer, ForeignKey(Test.id), index=True)
             profile_id = Column("ProfileID", Integer, ForeignKey(Profile.id))
-            
+
             run = sqlalchemy.orm.relation(Run)
             test = sqlalchemy.orm.relation(Test)
             profile = sqlalchemy.orm.relation(Profile)
@@ -725,7 +725,7 @@ class TestSuiteDB(object):
         class FieldChange(self.base, ParameterizedMixin):
             """FieldChange represents a change in between the values
             of the same field belonging to two samples from consecutive runs."""
-            
+
             __tablename__ = db_key_name + '_FieldChangeV2'
             id = Column("ID", Integer, primary_key = True)
             old_value = Column("OldValue", Float)
@@ -743,7 +743,7 @@ class TestSuiteDB(object):
             # Could be from many runs, but most recent one is interesting.
             run_id = Column("RunID", Integer,
                                 ForeignKey("%s_Run.ID" % db_key_name))
-            
+
             start_order = sqlalchemy.orm.relation(Order,
                                                   primaryjoin='FieldChange.'\
                                                   'start_order_id==Order.id')
@@ -770,7 +770,7 @@ class TestSuiteDB(object):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,
                                     (self.start_order, self.end_order,
                                      self.test, self.machine, self.field))
-            
+
             def __json__(self):
                 self.machine
                 self.test
@@ -798,7 +798,7 @@ class TestSuiteDB(object):
             def __repr__(self):
                 return '%s_%s:"%s"' % (db_key_name, self.__class__.__name__,
                                     self.title)
-            
+
             def __json__(self):
                  return strip(self.__dict__)
 
@@ -823,7 +823,7 @@ class TestSuiteDB(object):
             def __repr__(self):
                 return '%s_%s%r' % (db_key_name, self.__class__.__name__,(
                         self.id, self.regression, self.field_change))
-            
+
             def __json__(self):
                 return {u'RegressionIndicatorID': self.id,
                         u'Regression': self.regression,
@@ -1520,13 +1520,28 @@ test %r is misnamed for reporting under schema %r""" % (
                 for field_change in field_changes_for_test)
 
         for test_id in test_ids:
+            test_status[test_id]["stable_for"] = "failure"
             if test_status[test_id]["stable"]:
-                regressions = self.query(self.Regression).join(self.RegressionIndicator).join(self.FieldChange).filter(self.FieldChange.test_id == test_id).order_by(self.Regression.id.desc()).all()
-                regression_id = max(r.id for r in regressions) if regressions else -1
-                if regression_id > 0:
-                    regression_ind = self.query(self.RegressionIndicator).join(self.Regression).filter(self.Regression.id == regression_id).first()
+                regressions = (self.query(self.Regression).
+                               join(self.RegressionIndicator).
+                               join(self.FieldChange).
+                               filter(self.FieldChange.test_id == test_id).
+                               order_by(self.Regression.id.desc()).all())
+                if regressions:
+                    regression_id = max(r.id for r in regressions)
+                    regression_ind = (self.query(self.RegressionIndicator).
+                                      join(self.Regression).
+                                      filter(self.Regression.id == regression_id).first())
                     regressed_run = regression_ind.field_change.run
-                    test_status[test_id]["stable_for"] = latest_run.id - regressed_run.id
+                    try:
+                        test_status[test_id]["stable_for"] = latest_run.id - regressed_run.id
+                    except Exception:
+                        print("Unable to get status of test [{}] for field "
+                              "change [{}]".format(
+                            regression_ind.field_change.test_id,
+                            regression_ind.field_change.id))
+                        test_status[test_id]["stable_for"] = "Error calculating"
+
                 else:
                     test_status[test_id]["stable_for"] = latest_run.id
             else:

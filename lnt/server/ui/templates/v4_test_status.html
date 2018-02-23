@@ -138,9 +138,9 @@
                         <td>
                             {% if status[test_id]["stable"] == True and status[test_id]["stable_for"] != "Error calculating" %}
                                 {% set pct = (status[test_id]["stable_for"] / total_master_runs) * 100 %}
-                                {{'%0.2f' % pct|float}} %
+                                {{'%03.2f' % pct|float}} %
                             {% else %}
-                                {{ status[test_id]["stable_for"] }}
+                                0
                             {% endif %}
                         </td>
                     </tr>

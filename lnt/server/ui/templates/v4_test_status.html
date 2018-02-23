@@ -108,12 +108,13 @@
                     <th>Test Name</th>
                     <th>Test Status</th>
                     <th>Number of Stable Runs</th>
+                    <th>% Stable Runs</th>
                 </tr>
                 </thead>
                 <tbody class="searchable">
                 {% for test_id in status %}
                     <tr>
-                        {% if status[test_id]["stable"] == True %}
+                        {% if status[test_id]["stable"] == True and status[test_id]["stable_for"] != "Error calculating" %}
                             <td bgcolor="#7fff00">
                                 {% else %}
                             <td bgcolor="#ff4500">
@@ -133,6 +134,13 @@
                         </td>
                         <td>
                             {{ status[test_id]["stable_for"] }}
+                        </td>
+                        <td>
+                            {% if status[test_id]["stable"] == True and status[test_id]["stable_for"] != "Error calculating" %}
+                                {{ (status[test_id]["stable_for"] / total_master_runs) * 100 }}&#37;
+                            {% else %}
+                                {{ status[test_id]["stable_for"] }}
+                            {% endif %}
                         </td>
                     </tr>
                 {% endfor %}

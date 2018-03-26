@@ -768,7 +768,7 @@ def v4_git_sha(sha):
 def v4_test_status():
     ts = request.get_testsuite()
 
-    test_status, latest_order, latest_run, tests = ts.get_test_status(10)
+    test_status, latest_order, latest_run, tests = ts.get_stability_status(10)
 
     return render_template("v4_test_status.html", ts=ts, status=test_status,
                            order=latest_order, run=latest_run, tests=tests,

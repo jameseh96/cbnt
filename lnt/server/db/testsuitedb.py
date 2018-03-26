@@ -1466,7 +1466,7 @@ class TestSuiteDB(object):
                        field_change.end_order_id in order_ids
                        for field_change in field_changes_for_test)
 
-    def get_test_status(self, stability_threshold):
+    def get_stability_status(self, stability_threshold):
         test_status = OrderedDict()
 
         latest_order = (self.query(self.Order).

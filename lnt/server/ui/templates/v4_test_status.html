@@ -81,12 +81,12 @@
             <tr>
                 <td><b>Stable</b></td>
                 <td>{{ num_stable }}</td>
-                <td>{{ ((num_stable / status|length) * 100)|int }}</td>
+                <td>{{ '%03.2f' % ((num_stable / status|length) * 100)|float }}</td>
             </tr>
             <tr>
                 <td><b>Unstable</b></td>
                 <td>{{ num_unstable }}</td>
-                <td>{{ ((num_unstable / status|length) * 100)|int }}</td>
+                <td>{{ '%03.2f' % ((num_unstable / status|length) * 100)|float }}</td>
             </tr>
             <tr></tr>
             <tr>
@@ -106,8 +106,8 @@
                 <tr>
                     <th>Test ID</th>
                     <th>Test Name</th>
-                    <th>Test Status</th>
                     <th>Number of Test Runs</th>
+                    <th>Test Status</th>
                     <th>Number of Stable Runs</th>
                     <th>% Stable Runs</th>
                     <th>Has Regressed</th>
@@ -128,6 +128,9 @@
                             </a>
                         </td>
                         <td>
+                            {{ status[test_id]["number_of_runs"] }}
+                        </td>
+                        <td>
                             {% if status[test_id]["stable"] == True %}
                                 Stable
                             {% else %}
@@ -135,14 +138,11 @@
                             {% endif %}
                         </td>
                         <td>
-                            {{ status[test_id]["number_of_runs"] }}
-                        </td>
-                        <td>
                             {{ status[test_id]["stable_for"] }}
                         </td>
                         <td>
                             {% if status[test_id]["stable"] == True and status[test_id]["stable_for"] != "Error calculating" %}
-                                {% set pct = (status[test_id]["stable_for"] / total_master_runs) * 100 %}
+                                {% set pct = (status[test_id]["stable_for"] / status[test_id]["number_of_runs"]) * 100 %}
                                 {{ '%03.2f' % pct|float }} %
                             {% else %}
                                 0

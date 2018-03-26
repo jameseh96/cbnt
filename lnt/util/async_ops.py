@@ -102,9 +102,11 @@ def async_run_job(job, db_name, ts, func_args):
     job.start()
     JOBS.append(job)
 
+
 # Flag to track if we have disposed of the parents database connections in
 # this subprocess.
 clean_db = False
+
 
 def async_wrapper(job, ts_args, func_args):
     """Setup test-suite in this subprocess and run something.
@@ -123,7 +125,7 @@ def async_wrapper(job, ts_args, func_args):
         note("Running async wrapper: {} ".format(job.__name__)+ str(os.getpid()))
 
         _v4db = current_app.old_config.get_database(ts_args['db'])
-        #with contextlib.closing(_v4db) as db:
+        # with contextlib.closing(_v4db) as db:
         ts = _v4db.testsuite[ts_args['tsname']]
         nothing = job(ts, **func_args)
         assert nothing is None
@@ -135,7 +137,7 @@ def async_wrapper(job, ts_args, func_args):
             note(msg)
         else:
             warning(msg)
-    except:
+    except Exception:
         # Put all exception text into an exception and raise that for our
         # parent process.
         error("Subprocess failed with:" + "".join(traceback.format_exception(*sys.exc_info())))

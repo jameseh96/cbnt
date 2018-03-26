@@ -1204,14 +1204,11 @@ class TestSuiteDB(object):
         tests_values = {}
         for test_data in tests_data:
             if test_data['Info']:
-                raise ValueError,"""\
-test parameter sets are not supported by V4DB databases"""
+                raise ValueError("Test parameter sets are not supported by V4DB databases")
 
             name = test_data['Name']
             if not name.startswith(tag_dot):
-                raise ValueError,"""\
-test %r is misnamed for reporting under schema %r""" % (
-                    name, tag)
+                raise ValueError("Test [{}] is misnamed for reporting under schema {}".format(name, tag))
             name = name[tag_dot_len:]
 
             # Add all the values.
@@ -1242,9 +1239,7 @@ test %r is misnamed for reporting under schema %r""" % (
                         break
                 else:
                     # Disallow tests which do not map to a sample field.
-                    raise ValueError,"""\
-    test %r does not map to a sample field in the reported suite""" % (
-                        name)
+                    raise ValueError("test {} does not map to a sample field in the reported suite".format(name))
 
             # Get or create the test.
             test = test_cache.get(test_name)

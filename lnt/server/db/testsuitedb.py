@@ -1515,7 +1515,11 @@ class TestSuiteDB(object):
                 for field_change in field_changes_for_test)
 
         for test_id in test_ids:
+            first_run = self.query(self.Sample).filter(
+                self.Sample.test_id == test_id).order_by(
+                self.Sample.run_id.asc()).first()
             test_status[test_id]["stable_for"] = "failure"
+            test_status[test_id]["number_of_runs"] = latest_run.id - first_run.run_id
             if test_status[test_id]["stable"]:
                 regressions = (self.query(self.Regression).
                                join(self.RegressionIndicator).
@@ -1530,6 +1534,7 @@ class TestSuiteDB(object):
                     regressed_run = regression_ind.field_change.run
                     try:
                         test_status[test_id]["stable_for"] = latest_run.id - regressed_run.id
+                        test_status[test_id]["has_regressed"] = True
                     except Exception:
                         print("Unable to get status of test [{}] for field "
                               "change [{}]".format(
@@ -1538,10 +1543,11 @@ class TestSuiteDB(object):
                         test_status[test_id]["stable_for"] = "Error calculating"
 
                 else:
-                    first_run = self.query(self.Sample).filter(self.Sample.test_id == test_id).order_by(self.Sample.run_id.asc()).first()
                     test_status[test_id]["stable_for"] = latest_run.id - first_run.run_id
+                    test_status[test_id]["has_regressed"] = False
             else:
                 test_status[test_id]["stable_for"] = "N/A"
+                test_status[test_id]["has_regressed"] = True
 
         print(latest_run)
 

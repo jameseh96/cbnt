@@ -107,8 +107,10 @@
                     <th>Test ID</th>
                     <th>Test Name</th>
                     <th>Test Status</th>
+                    <th>Number of Test Runs</th>
                     <th>Number of Stable Runs</th>
                     <th>% Stable Runs</th>
+                    <th>Has Regressed</th>
                 </tr>
                 </thead>
                 <tbody class="searchable">
@@ -133,15 +135,21 @@
                             {% endif %}
                         </td>
                         <td>
+                            {{ status[test_id]["number_of_runs"] }}
+                        </td>
+                        <td>
                             {{ status[test_id]["stable_for"] }}
                         </td>
                         <td>
                             {% if status[test_id]["stable"] == True and status[test_id]["stable_for"] != "Error calculating" %}
                                 {% set pct = (status[test_id]["stable_for"] / total_master_runs) * 100 %}
-                                {{'%03.2f' % pct|float}} %
+                                {{ '%03.2f' % pct|float }} %
                             {% else %}
                                 0
                             {% endif %}
+                        </td>
+                        <td>
+                            {{ status[test_id]["has_regressed"] }}
                         </td>
                     </tr>
                 {% endfor %}

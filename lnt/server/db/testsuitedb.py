@@ -1549,6 +1549,4 @@ class TestSuiteDB(object):
                 test_status[test_id]["stable_for"] = "N/A"
                 test_status[test_id]["has_regressed"] = True
 
-        print(latest_run)
-
         return test_status, latest_order, latest_run, tests

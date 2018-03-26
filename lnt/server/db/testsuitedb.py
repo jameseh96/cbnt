@@ -1532,9 +1532,9 @@ class TestSuiteDB(object):
                                       join(self.Regression).
                                       filter(self.Regression.id == regression_id).first())
                     regressed_run = regression_ind.field_change.run
+                    test_status[test_id]["has_regressed"] = True
                     try:
                         test_status[test_id]["stable_for"] = latest_run.id - regressed_run.id
-                        test_status[test_id]["has_regressed"] = True
                     except Exception:
                         print("Unable to get status of test [{}] for field "
                               "change [{}]".format(

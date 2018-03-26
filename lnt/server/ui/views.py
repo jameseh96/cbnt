@@ -777,7 +777,8 @@ def v4_test_status():
                            metric_fields=list(ts.Sample.get_metric_fields()),
                            num_stable=sum(1 for c in test_status if test_status[c]["stable"]),
                            num_unstable=sum(1 for c in test_status if not test_status[c]["stable"]),
-                           total_master_runs=ts._get_max_run_order())
+                           total_master_runs=ts._get_max_run_order(),
+                           stability_threshold=10)
 
 
 @v4_route("/order/<int:id>")

@@ -1538,7 +1538,8 @@ class TestSuiteDB(object):
                         test_status[test_id]["stable_for"] = "Error calculating"
 
                 else:
-                    test_status[test_id]["stable_for"] = latest_run.id
+                    first_run = self.query(self.Sample).filter(self.Sample.test_id == test_id).order_by(self.Sample.run_id.asc()).first()
+                    test_status[test_id]["stable_for"] = latest_run.id - first_run.run_id
             else:
                 test_status[test_id]["stable_for"] = "N/A"
 

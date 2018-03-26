@@ -1466,7 +1466,7 @@ class TestSuiteDB(object):
                        field_change.end_order_id in order_ids
                        for field_change in field_changes_for_test)
 
-    def get_test_status(self, stability_threshold):
+    def get_stability_status(self, stability_threshold):
         test_status = OrderedDict()
 
         latest_order = (self.query(self.Order).
@@ -1515,7 +1515,11 @@ class TestSuiteDB(object):
                 for field_change in field_changes_for_test)
 
         for test_id in test_ids:
+            first_run = self.query(self.Sample).filter(
+                self.Sample.test_id == test_id).order_by(
+                self.Sample.run_id.asc()).first()
             test_status[test_id]["stable_for"] = "failure"
+            test_status[test_id]["number_of_runs"] = latest_run.id - first_run.run_id
             if test_status[test_id]["stable"]:
                 regressions = (self.query(self.Regression).
                                join(self.RegressionIndicator).
@@ -1528,6 +1532,7 @@ class TestSuiteDB(object):
                                       join(self.Regression).
                                       filter(self.Regression.id == regression_id).first())
                     regressed_run = regression_ind.field_change.run
+                    test_status[test_id]["has_regressed"] = True
                     try:
                         test_status[test_id]["stable_for"] = latest_run.id - regressed_run.id
                     except Exception:
@@ -1538,8 +1543,10 @@ class TestSuiteDB(object):
                         test_status[test_id]["stable_for"] = "Error calculating"
 
                 else:
-                    test_status[test_id]["stable_for"] = latest_run.id
+                    test_status[test_id]["stable_for"] = latest_run.id - first_run.run_id
+                    test_status[test_id]["has_regressed"] = False
             else:
                 test_status[test_id]["stable_for"] = "N/A"
+                test_status[test_id]["has_regressed"] = True
 
         return test_status, latest_order, latest_run, tests

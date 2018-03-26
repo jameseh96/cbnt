@@ -768,14 +768,15 @@ def v4_git_sha(sha):
 def v4_test_status():
     ts = request.get_testsuite()
 
-    test_status, latest_order, latest_run, tests = ts.get_test_status(10)
+    test_status, latest_order, latest_run, tests = ts.get_stability_status(10)
 
     return render_template("v4_test_status.html", ts=ts, status=test_status,
                            order=latest_order, run=latest_run, tests=tests,
                            metric_fields=list(ts.Sample.get_metric_fields()),
                            num_stable=sum(1 for c in test_status if test_status[c]["stable"]),
                            num_unstable=sum(1 for c in test_status if not test_status[c]["stable"]),
-                           total_master_runs=ts._get_max_run_order())
+                           total_master_runs=ts._get_max_run_order(),
+                           stability_threshold=10)
 
 
 @v4_route("/order/<int:id>")

@@ -1542,4 +1542,6 @@ class TestSuiteDB(object):
             else:
                 test_status[test_id]["stable_for"] = "N/A"
 
+        print(latest_run)
+
         return test_status, latest_order, latest_run, tests

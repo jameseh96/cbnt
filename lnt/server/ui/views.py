@@ -770,6 +770,8 @@ def v4_test_status():
 
     test_status, latest_order, latest_run, tests = ts.get_stability_status(10)
 
+    print(latest_run)
+
     return render_template("v4_test_status.html", ts=ts, status=test_status,
                            order=latest_order, run=latest_run, tests=tests,
                            metric_fields=list(ts.Sample.get_metric_fields()),

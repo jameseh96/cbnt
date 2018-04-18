@@ -10,6 +10,7 @@ Define facilities for automatically upgrading databases.
 import logging
 import os
 import re
+import json
 
 import sqlalchemy
 import sqlalchemy.ext.declarative
@@ -18,15 +19,22 @@ from sqlalchemy import Column, String, Integer
 
 import lnt.server.db.util
 
-###
-# List of all Couchbase testsuites
-# If you want to add a new one, add it to the list
-CB_TESTSUITES = [{'name': 'memcached', 'db_key': 'Memcached'},
-                 {'name': 'ep-engine', 'db_key': 'EP'},
-                 {'name': 'kv-engine', 'db_key': 'KV'},
-                 {'name': 'kv-engine_spock', 'db_key': 'KV_spock'},
-                 {'name': 'ep-engine_watson', 'db_key': 'EP_watson'},
-                 {'name': 'memcached_watson', 'db_key': 'Memcached_watson'}]
+####################################
+# List of all Couchbase testsuites #
+####################################
+CB_TESTSUITES = []
+
+config_file = open("/lnt/lnt/tests/kv_engine_testsuites.conf".format(os.path.dirname(os.path.realpath(__file__))), 'r')
+config = json.load(config_file)
+
+for item in config:
+    dbo = {}
+    dbo["name"] = item['server-name']
+    dbo['db_key'] = item['server-db-key']
+    CB_TESTSUITES.append(dbo)
+
+config_file.close()
+
 
 # Schema for in-database version information.
 Base = sqlalchemy.ext.declarative.declarative_base()

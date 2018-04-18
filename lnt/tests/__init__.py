@@ -2,10 +2,19 @@
 Access to built-in tests.
 """
 
+import json
+
 # FIXME: There are better ways to do this, no doubt. We also would like this to
 # be extensible outside of the installation. Lookup how 'nose' handles this.
-known_tests = {'memcached', 'ep_engine', 'memcached_watson',
-               'ep_engine_watson', 'kv_engine', 'kv_engine_spock'}
+known_tests = set()
+config_file = open("kv_engine_testsuites.conf", 'r')
+config = json.load(config_file)
+
+for item in config:
+    known_tests.add(item['client-name'])
+
+config_file.close()
+
 
 def get_test_names():
     """get_test_names() -> list

@@ -3,11 +3,16 @@ Access to built-in tests.
 """
 
 import json
+import os
+import sys
+
+def get_script_path():
+    return os.path.dirname(os.path.realpath(sys.argv[0]))
 
 # FIXME: There are better ways to do this, no doubt. We also would like this to
 # be extensible outside of the installation. Lookup how 'nose' handles this.
 known_tests = set()
-config_file = open("kv_engine_testsuites.conf", 'r')
+config_file = open("/lnt/lnt/tests/kv_engine_testsuites.conf", 'r')
 config = json.load(config_file)
 
 for item in config:

@@ -1,6 +1,6 @@
 from couchbase import CouchbaseTest
 
-KvEngineVulcanTest(CouchbaseTest):
+class KvEngineVulcanTest(CouchbaseTest):
     pass
 
 def create_instance():

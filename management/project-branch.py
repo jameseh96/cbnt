@@ -129,7 +129,7 @@ def main():
     with open("{}/../lnt/tests/".format(get_script_path()) + file_name,
               'w') as test_suite:
         test_suite.write("from couchbase import CouchbaseTest\n\n")
-        test_suite.write(class_name + "(CouchbaseTest):\n")
+        test_suite.write("class " + class_name + "(CouchbaseTest):\n")
         test_suite.write("    pass\n\n")
         test_suite.write("def create_instance():\n")
         test_suite.write("    return {}()\n".format(class_name))

@@ -9,7 +9,7 @@ function fatal_error_handler() {
 }
 
 timestamp() {
-  date +"%T"
+  date +"%D-%T"
 }
 
 trap fatal_error_handler ERR

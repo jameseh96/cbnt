@@ -1,4 +1,4 @@
-FROM ceejatec/ubuntu-1604-couchbase-cv:20180129
+FROM ceejatec/ubuntu-1604-couchbase-build:20180309
 
 # We need to export these environment variables
 # as we are using a custom compiled version of GCC

@@ -5,4 +5,4 @@ else
 fi
 
 cd /lnt/deployment
-gunicorn app_wrapper:app -w 8 -b 0.0.0.0:8000 --max-requests 10
+gunicorn app_wrapper:app -w 8 -b 0.0.0.0:8000 --max-requests 10 --timeout 300

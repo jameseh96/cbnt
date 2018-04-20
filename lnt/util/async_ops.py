@@ -23,7 +23,7 @@ import multiprocessing
 from multiprocessing import Pool, TimeoutError, Manager, Process
 from threading import Lock
 from lnt.testing.util.commands import note, warning, timed, error
-NUM_WORKERS = 4  # The number of subprocesses to spawn per LNT process.
+NUM_WORKERS = 8  # The number of subprocesses to spawn per LNT process.
 WORKERS = None  # The worker pool.
 
 JOBS = []

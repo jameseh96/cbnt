@@ -66,6 +66,8 @@ class ComparisonResult:
                  confidence_lv=0.05, bigger_is_better=False, stable_test=True):
         self.aggregation_fn = aggregation_fn
 
+        print("BIB?: " + str(bigger_is_better))
+
         # Special case: if we're using the minimum to aggregate, swap it for max
         # if bigger_is_better.
         if aggregation_fn == stats.safe_min and bigger_is_better:

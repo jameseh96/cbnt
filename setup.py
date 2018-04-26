@@ -123,7 +123,7 @@ http://llvm.org/svn/llvm-project/lnt/trunk
             'lnt = lnt.lnttool:main',
         ],
     },
-g
+
     install_requires=reqs,
 
     ext_modules=[cPerf],

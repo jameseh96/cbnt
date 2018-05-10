@@ -90,7 +90,7 @@ class V4DB(object):
         # Proxy object for implementing dict-like .testsuite property.
         self._testsuite_proxy = None
 
-        self.session = sqlalchemy.orm.sessionmaker(self.engine)()
+        self.session = sqlalchemy.orm.sessionmaker(self.engine, autoflush=False)()
 
         # Add several shortcut aliases.
         self.add = self.session.add

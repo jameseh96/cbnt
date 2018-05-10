@@ -160,11 +160,11 @@ def generate_run_report(run, baseurl, only_html_body=False,
     # Define URLS.
     if baseurl[-1] == '/':
         baseurl = baseurl[:-1]
-    ts_url = """%s/v4/%s""" % (baseurl, ts.name)
+    ts_url = "{}/v4/{}".format(baseurl, ts.name)
     if cv:
-        run_url = """%s/cv/%d""" % (ts_url, run.id)
+        run_url = "{}/cv/{}".format(ts_url, run.id)
     else:
-        run_url = """%s/%d""" % (ts_url, run.id)
+        run_url = "{}/{}".format(ts_url, run.id)
     report_url = run_url
     url_fields = []
     if compare_to:

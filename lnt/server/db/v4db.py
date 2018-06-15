@@ -182,7 +182,6 @@ class V4DB(object):
                     for ts in self.testsuite.values()])
 
     def importDataFromDict(self, data, commit, config=None, cv=False):
-        print("v4db: importDataFromDict")
         # Select the database to import into.
         #
         # FIXME: Promote this to a top-level field in the data.
@@ -195,5 +194,4 @@ class V4DB(object):
             raise ValueError, "test suite %r not present in this database!" % (
                 db_name)
 
-        print("v4db: Calling db.importDataFromDict")
         return db.importDataFromDict(data, commit, config, cv=cv)

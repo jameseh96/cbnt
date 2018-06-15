@@ -132,7 +132,6 @@ def submit_run():
         #
         # FIXME: Gracefully handle formats failures and DOS attempts. We
         # should at least reject overly large inputs.
-        print("Calling lnt.util.ImportData.import_and_report")
         result = lnt.util.ImportData.import_and_report(
             current_app.old_config, g.db_name, db, path, '<auto>', commit)
 

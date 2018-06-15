@@ -1271,7 +1271,6 @@ class TestSuiteDB(object):
         The boolean result indicates whether the returned record was constructed
         or not (i.e., whether the data was a duplicate submission).
         """
-        print("testsuitedb: importDataFromDict")
 
         # Construct the machine entry.
         machine,inserted = self._getOrCreateMachine(data['Machine'])

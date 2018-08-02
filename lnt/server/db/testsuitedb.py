@@ -1361,6 +1361,9 @@ class TestSuiteDB(object):
             filter(self.Run.machine == run.machine).distinct().all()
         all_machine_orders.sort()
 
+        if len(all_machine_orders) == 0:
+            return []
+
         # Find the index of the current run.
         if cv:
             parent_order = self.get_parent_order(run)

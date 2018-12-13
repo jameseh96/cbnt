@@ -49,7 +49,8 @@ also supported, all files are located in ``deployment/docker``.
 
 The following instructions assume that you have a familiarity with Docker, if
 not then please check out the `Docker quickstart guide
-<https://docs.docker.com/engine/getstarted/>`_.
+<https://docs.docker.com/engine/getstarted/>`_. For the Dockerfile to work
+correctly, you will need to run build from the root of your CBNT checkout.
 
 There is a pre-canned version of the server container at
 https://hub.docker.com/r/mattcarabine/cbnt_server and the client container

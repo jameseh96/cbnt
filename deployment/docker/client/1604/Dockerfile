@@ -1,4 +1,4 @@
-FROM couchbasebuild/server-ubuntu16-cv:2018112
+FROM couchbasebuild/server-ubuntu16-cv:20190315
 
 # We need to export these environment variables
 # as we are using a custom compiled version of GCC
